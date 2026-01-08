@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">livesohbet</string>
+    <string name="title_activity_main">livesohbet</string>
+    <string name="package_name">com.livesohbet.test</string>
+    <string name="custom_url_scheme">com.livesohbet.test</string>
+</resources>

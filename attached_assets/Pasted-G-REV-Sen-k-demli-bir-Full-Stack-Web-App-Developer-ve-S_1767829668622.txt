@@ -1,0 +1,57 @@
+GÖREV: Sen kıdemli bir Full-Stack Web App Developer ve Software Architect'sin. Görevin; Azar, Tango ve WeChat mekaniklerine sahip, Firebase altyapılı, profesyonel seviyede bir "Real-Time Discovery & Chat" uygulaması geliştirmektir.
+
+🛠 TEKNİK STACK & SINIRLAR
+Diller: HTML5, Modern CSS3 (CSS Variables + Flexbox/Grid), Vanilla JavaScript (ES6+).
+
+Backend: Firebase (v10+ SDK - Compat veya Modular).
+
+Servisler: Firebase Auth, Firestore (NoSQL), Realtime Sync (onSnapshot).
+
+Platform: Fully Responsive (Mobile-First approach). Oyun motoru veya kütüphane kullanılmayacak.
+
+📦 DOSYA YAPISI (AYRI AYRI ÜRETİLECEK)
+index.html: SPA (Single Page Application) yapısında, ekranlar arası geçiş mantığına uygun iskelet.
+
+style.css: Modern, "Viral" tasarımlı, karanlık/aydınlık mod uyumlu, mikro-animasyonlu stil dosyası.
+
+app.js: Modüler, temiz kod prensiplerine uygun, her fonksiyonu yorum satırlarıyla açıklanmış ana mantık.
+
+🧠 KRİTİK İŞ MANTIKLARI (MUTLAKA OLMALI)
+Firebase Config: app.js dosyasının en üstünde, açıkça belirtilmiş ve yorumlanmış bir const firebaseConfig bloğu bulunmalıdır.
+
+Discovery (Keşif) Modülü: Kullanıcıları Firestore'dan çekerken önce "Online" olanları, ardından "Konum" (yakınlık) sırasına göre listeleyen bir algoritma içermelidir.
+
+Mesaj Sınırı (Kritik): Arkadaş olmayan kullanıcılar arası FREE_MESSAGE_LIMIT = 3 kuralı uygulanmalıdır. Sınır dolunca otomatik olarak Mağaza/Diamond ekranı tetiklenmelidir.
+
+Ekonomik Sistem: Elmas (Diamond) bakiyesi ve VIP statüsü (Bronze, Silver, Gold) Firestore üzerinden yönetilmeli; her VIP türünün günlük mesaj limiti değişken olmalıdır.
+
+Anlık Bildirimler: Arkadaşlık isteği veya yeni mesaj geldiğinde hem UI içinde hem de Tarayıcı Bildirimi (Notification API) üzerinden uyarı verilmelidir.
+
+🎨 UI/UX STANDARTLARI
+Tasarım Dili: Cam efektli (Glassmorphism) kartlar, yumuşak geçişler, profesyonel profil kartları.
+
+Interaktivite: Yazıyor... (Typing indicator), Okundu (Read receipts), Çevrimiçi/Çevrimdışı status dotları.
+
+Kullanılabilirlik: Desktop'ta sidebar/grid yapısı, Mobilde tab-bar ve tam ekran sohbet penceresi.
+
+🧑‍💻 KOD MODÜLERLİĞİ (app.js BAŞLIKLARI)
+Kod içerisinde şu bölümler yorum satırlarıyla (Separator) ayrılmalıdır:
+
+// [1] Firebase Initialization
+
+// [2] Auth & User Session Management
+
+// [3] Discovery & Search Engine (Geo-sorting simulation)
+
+// [4] Messaging System (Real-time & Limit Logic)
+
+// [5] Friend & Block System
+
+// [6] Store & VIP Subscription Logic
+
+// [7] Notification & UI State Management
+
+📘 BAŞLANGIÇ AÇIKLAMALARI
+Dosyaların başında "NERELERİ DEĞİŞTİREBİLİRSİN" ve "ÖNEMLİ AYARLAR" başlıklı birer yorum bloğu ekle.
+
+Şimdi yukarıdaki tüm kurallara uyarak, eksiksiz, profesyonel ve ölçeklenebilir bir uygulama kodu üret.
