@@ -1,15 +1,6 @@
 {
   "version": 2,
-  "functions": {
-    "server/index.ts": {
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
-    {
-      "source": "/api/auth/register",
-      "destination": "/server/index.ts"
-    },
     {
       "source": "/api/(.*)",
       "destination": "/server/index.ts"
