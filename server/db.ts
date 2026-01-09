@@ -1,6 +1,6 @@
 import { neon, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from "@shared/schema";
+import * as schema from "../shared/schema";
 
 // Serverless ortamlarda WebSocket yerine HTTP üzerinden sorgu göndermek 
 // bağlantı hatalarını ve "asılı kalma" sorunlarını önler.
