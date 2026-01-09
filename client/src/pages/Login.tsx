@@ -22,8 +22,12 @@ export default function Login() {
         // Başarılıysa App.tsx içindeki Redirect sayesinde otomatik yönleneceksin
       } else {
         // Kayıt işlemi
-        const result = await register(username, email, password);
-      }
+        // Login.tsx içinde handleSubmit içinde
+const result = await register(username, email, password);
+console.log("Register sonucu:", result); // Tarayıcı konsolunda bunu görmen lazım
+if (result && result.success) {
+   setLocation("/");
+}
     } catch (error) {
       console.error("Giriş/Kayıt Hatası:", error);
     } finally {
