@@ -27,7 +27,6 @@ const result = await register(username, email, password);
 console.log("Register sonucu:", result); // Tarayıcı konsolunda bunu görmen lazım
 if (result && result.success) {
    setLocation("/");
-}
     } catch (error) {
       console.error("Giriş/Kayıt Hatası:", error);
     } finally {
