@@ -61,7 +61,7 @@ export async function registerRoutes(
       res.status(201).json({ user, token: user.id });
     } catch (error: any) {
       console.error("Register Error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || "Kayıt sırasında hata oluştu" });
     }
   });
 
@@ -69,19 +69,31 @@ export async function registerRoutes(
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
+      
       if (!email || !password) {
         return res.status(400).json({ error: "E-posta ve şifre gereklidir" });
       }
 
       const user = await storage.getUserByEmail(email);
-      if (!user || user.password !== password) {
-        return res.status(401).json({ error: "Geçersiz giriş bilgileri" });
+      
+      if (!user) {
+        return res.status(401).json({ error: "Kullanıcı bulunamadı" });
       }
 
-      await storage.updateUser(user.id, { isOnline: true, lastActive: new Date() });
-      res.json({ user, token: user.id });
+      if (user.password !== password) {
+        return res.status(401).json({ error: "Geçersiz şifre" });
+      }
+
+      // Kullanıcıyı online yap
+      const updatedUser = await storage.updateUser(user.id, { 
+        isOnline: true, 
+        lastActive: new Date() 
+      });
+
+      res.json({ user: updatedUser, token: user.id });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("Login Error:", error);
+      res.status(500).json({ error: error.message || "Giriş sırasında hata oluştu" });
     }
   });
 
@@ -89,14 +101,26 @@ export async function registerRoutes(
   app.get("/api/auth/me", async (req, res) => {
     try {
       const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
-      if (!token) return res.status(401).json({ error: "Yetkisiz erişim" });
+      
+      if (!token) {
+        return res.status(401).json({ error: "Token eksik" });
+      }
 
       const user = await storage.getUser(token);
-      if (!user) return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+      
+      if (!user) {
+        return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+      }
 
-      res.json({ user });
+      // Kullanıcı bilgilerini güncellerken lastActive'i güncelle
+      const updatedUser = await storage.updateUser(user.id, { 
+        lastActive: new Date() 
+      });
+
+      res.json({ user: updatedUser });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("Auth Me Error:", error);
+      res.status(500).json({ error: error.message || "Kullanıcı bilgileri alınamadı" });
     }
   });
 
@@ -104,16 +128,42 @@ export async function registerRoutes(
   app.get("/api/users", async (req, res) => {
     try {
       const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
-      if (!token) return res.status(401).json({ error: "Unauthorized" });
+      
+      if (!token) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
 
       const currentUser = await storage.getUser(token);
-      if (!currentUser) return res.status(401).json({ error: "User not found" });
+      
+      if (!currentUser) {
+        return res.status(401).json({ error: "User not found" });
+      }
 
       const userLocation = currentUser.location as { lat: number; lng: number } | null;
       const users = await storage.getAllUsers(token, userLocation || undefined);
+      
       res.json(users);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("Get Users Error:", error);
+      res.status(500).json({ error: error.message || "Kullanıcılar getirilemedi" });
+    }
+  });
+
+  // --- MESAJLARI GETİR ---
+  app.get("/api/messages/:userId", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      const { userId } = req.params;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const messages = await storage.getMessages(token, userId);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("Get Messages Error:", error);
+      res.status(500).json({ error: error.message || "Mesajlar getirilemedi" });
     }
   });
 
@@ -128,7 +178,10 @@ export async function registerRoutes(
       }
 
       const sender = await storage.getUser(token);
-      if (!sender) return res.status(401).json({ error: "Gönderici bulunamadı" });
+      
+      if (!sender) {
+        return res.status(401).json({ error: "Gönderici bulunamadı" });
+      }
 
       // storage.getMessageCount bir Promise döndüğü için await ekledik
       const messageCount = await storage.getMessageCount(token, receiverId);
@@ -158,7 +211,7 @@ export async function registerRoutes(
       res.json({ message, isPaid });
     } catch (error: any) {
       console.error("Message Error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || "Mesaj gönderilemedi" });
     }
   });
 
@@ -181,6 +234,8 @@ export async function registerRoutes(
       wsClients.set(token, ws);
       storage.updateUser(token, { isOnline: true, lastActive: new Date() }).then(() => {
         broadcastUserUpdate({ type: "user_online", userId: token });
+      }).catch(err => {
+        console.error("WebSocket user update error:", err);
       });
 
       ws.on("close", () => {
@@ -188,8 +243,14 @@ export async function registerRoutes(
           wsClients.delete(token);
           storage.updateUser(token, { isOnline: false, lastActive: new Date() }).then(() => {
             broadcastUserUpdate({ type: "user_offline", userId: token });
+          }).catch(err => {
+            console.error("WebSocket disconnect error:", err);
           });
         }
+      });
+
+      ws.on("error", (error) => {
+        console.error("WebSocket error:", error);
       });
     });
   }

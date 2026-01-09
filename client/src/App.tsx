@@ -18,7 +18,7 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { user, isLoading } = useAuth();
 
-  // Yükleme sırasında boş ekran yerine bir spinner gösterelim
+  // Yükleme sırasında spinner göster
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
@@ -28,31 +28,80 @@ function Router() {
   }
 
   return (
-    <Switch>
-      {/* Giriş sayfası: Kullanıcı varsa ana sayfaya atar */}
-      <Route path="/login">
-        {user ? <Redirect to="/" /> : <Login />}
-      </Route>
-      
-      {/* Ana sayfalar: Giriş yoksa Login'e atar */}
-      <Route path="/">
-        {!user ? <Redirect to="/login" /> : <Discover />}
-      </Route>
-      <Route path="/chat">
-        {!user ? <Redirect to="/login" /> : <Chat />}
-      </Route>
-      <Route path="/store">
-        {!user ? <Redirect to="/login" /> : <Store />}
-      </Route>
-      <Route path="/profile">
-        {!user ? <Redirect to="/login" /> : <Profile />}
-      </Route>
-      
-      {/* Bilinmeyen rotaları Login'e yönlendir */}
-      <Route>
-        <Redirect to="/login" />
-      </Route>
-    </Switch>
+    <>
+      <Switch>
+        {/* Giriş sayfası */}
+        <Route path="/login">
+          {user ? <Redirect to="/" /> : <Login />}
+        </Route>
+        
+        {/* Korunan rotalar */}
+        <Route path="/">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <Discover />
+              <Navigation />
+            </>
+          )}
+        </Route>
+        
+        <Route path="/chat">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <Chat />
+              <Navigation />
+            </>
+          )}
+        </Route>
+        
+        <Route path="/store">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <Store />
+              <Navigation />
+            </>
+          )}
+        </Route>
+        
+        <Route path="/profile">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <Profile />
+              <Navigation />
+            </>
+          )}
+        </Route>
+
+        <Route path="/profile/edit">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <EditProfile />
+              <Navigation />
+            </>
+          )}
+        </Route>
+        
+        {/* 404 sayfası */}
+        <Route path="/404">
+          <NotFound />
+        </Route>
+        
+        {/* Bilinmeyen rotalar */}
+        <Route>
+          {user ? <Redirect to="/" /> : <Redirect to="/login" />}
+        </Route>
+      </Switch>
+    </>
   );
 }
 
