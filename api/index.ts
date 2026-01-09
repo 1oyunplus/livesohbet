@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "../server/routes.js";
+import { registerRoutes } from "./routes.js"; // '..' yerine '.' yaptık, dosyaların api klasöründe olduğunu varsayıyoruz
 import { createServer } from "http";
 import path from "path";
 import fs from "fs";
@@ -11,55 +11,75 @@ const httpServer = createServer(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Loglama Fonksiyonu
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
   });
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-// Ana Başlatma Fonksiyonu
+// İstek İzleyici (Hata ayıklama için)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (req.path.startsWith("/api")) {
+      log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
+    }
+  });
+  next();
+});
+
 (async () => {
   try {
-    // Rotaları kaydet
+    // 1. API Rotalarını (Mesajlar, Mağaza, Profil vb.) Kaydet
+    // Eğer dosyaları henüz api klasörüne taşımadıysan buradaki yolu "./routes.js" yerine "../server/routes.js" yapmalısın.
     await registerRoutes(httpServer, app);
 
-    // Statik Dosyalar (Railway ve Üretim Ortamı İçin)
+    // 2. Statik Dosya ve Frontend Ayarları
     const isProd = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
     
     if (isProd) {
-      // En güvenli yol tanımı: Mevcut çalışma dizininden dist/public'e git
+      // Railway/Vercel üzerinde derlenmiş frontend dosyalarının yolu
       const publicPath = path.resolve(process.cwd(), "dist", "public");
       
       if (fs.existsSync(publicPath)) {
         app.use(express.static(publicPath));
-        app.get("*", (req, res) => {
-          // API isteklerini dışla, geri kalan her şeyi React'e yönlendir
-          if (!req.path.startsWith('/api')) {
-            res.sendFile(path.join(publicPath, "index.html"));
+        
+        // ÖNEMLİ: API dışındaki tüm istekleri React'e yönlendir (Sekmelerin çalışması için)
+        app.get("*", (req, res, next) => {
+          if (req.path.startsWith("/api")) {
+            return next();
           }
+          res.sendFile(path.join(publicPath, "index.html"));
         });
         log("Statik dosyalar sunuluyor: " + publicPath);
       } else {
-        log("HATA: Statik klasör bulunamadı: " + publicPath);
+        log("UYARI: Statik klasör (dist/public) bulunamadı!", "error");
       }
     } else {
-      // Geliştirme modu (Vite)
-      const { setupVite } = await import("./vite");
+      // Geliştirme (Local) modu için Vite kurulumu
+      const { setupVite } = await import("./vite.js");
       await setupVite(httpServer, app);
     }
 
-    // Hata Yakalayıcı
+    // 3. Hata Yönetimi
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      res.status(err.status || 500).json({ message: err.message || "Internal Server Error" });
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
       console.error("Server Error:", err);
     });
 
-    // Railway Port Dinleme
+    // 4. Sunucuyu Başlat (Railway için 5000 portu)
     if (process.env.VERCEL !== '1') {
       const port = Number(process.env.PORT) || 5000;
       httpServer.listen(port, "0.0.0.0", () => {
-        log(`Sunucu ${port} portunda aktif.`);
+        log(`Sunucu ${port} portunda başarıyla başlatıldı.`);
       });
     }
   } catch (error) {
