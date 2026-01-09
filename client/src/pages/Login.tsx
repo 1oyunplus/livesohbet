@@ -19,25 +19,13 @@ export default function Login() {
     try {
       if (isLogin) {
         const result = await login(email, password);
-        if (result && result.success) {
-          // Giriş başarılıysa ana sayfaya git
-          setLocation("/");
-        }
+        // Başarılıysa App.tsx içindeki Redirect sayesinde otomatik yönleneceksin
       } else {
-        if (!username.trim()) {
-          alert("Kullanıcı adı gereklidir");
-          setIsLoading(false);
-          return;
-        }
-        // İŞTE BURASI DÜZELTİLDİ: Artık handleSubmit async olduğu için await çalışacak
+        // Kayıt işlemi
         const result = await register(username, email, password);
-        if (result && result.success) {
-          // Kayıt başarılıysa ana sayfaya git
-          setLocation("/");
-        }
       }
     } catch (error) {
-      console.error("Auth error:", error);
+      console.error("Giriş/Kayıt Hatası:", error);
     } finally {
       setIsLoading(false);
     }
