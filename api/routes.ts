@@ -28,8 +28,17 @@ export async function registerRoutes(
     });
   }
 
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV || "development"
+    });
+  });
+
   app.get("/api/status", (req, res) => {
-    res.json({ status: "ok", env: process.env.VERCEL ? "production" : "development" });
+    res.json({ status: "ok", env: process.env.NODE_ENV || "development" });
   });
 
   // --- KULLANICI KAYIT ---
@@ -41,15 +50,21 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Kullanıcı adı, e-posta ve şifre gereklidir" });
       }
 
-      const existingUser = await storage.getUserByEmail(email);
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Geçersiz e-posta formatı" });
+      }
+
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
       if (existingUser) {
         return res.status(400).json({ error: "Bu e-posta adresi zaten kayıtlı" });
       }
 
       const user = await storage.createUser({
-        username,
-        email,
-        password, // Not: Gerçek projede hash'lenmelidir
+        username: username.trim(),
+        email: email.toLowerCase().trim(),
+        password: password,
         photoUrl: photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`,
         diamonds: 10,
         vipStatus: "none",
@@ -57,10 +72,11 @@ export async function registerRoutes(
         location: { lat: 40.7128, lng: -74.0060 }
       });
 
-      // Frontend'in beklediği formatta token gönderiyoruz
+      console.log(`✅ User registered: ${user.username} (${user.email})`);
+      
       res.status(201).json({ user, token: user.id });
     } catch (error: any) {
-      console.error("Register Error:", error);
+      console.error("❌ Register Error:", error);
       res.status(500).json({ error: error.message || "Kayıt sırasında hata oluştu" });
     }
   });
@@ -74,14 +90,20 @@ export async function registerRoutes(
         return res.status(400).json({ error: "E-posta ve şifre gereklidir" });
       }
 
-      const user = await storage.getUserByEmail(email);
+      // Email'i normalize et (küçük harf + trim)
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      const user = await storage.getUserByEmail(normalizedEmail);
       
       if (!user) {
-        return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+        console.log(`❌ Login failed: User not found for ${normalizedEmail}`);
+        return res.status(401).json({ error: "E-posta veya şifre hatalı" });
       }
 
-      if (user.password !== password) {
-        return res.status(401).json({ error: "Geçersiz şifre" });
+      // Şifre kontrolü
+      if (!user.password || user.password !== password) {
+        console.log(`❌ Login failed: Invalid password for ${user.username}`);
+        return res.status(401).json({ error: "E-posta veya şifre hatalı" });
       }
 
       // Kullanıcıyı online yap
@@ -90,9 +112,10 @@ export async function registerRoutes(
         lastActive: new Date() 
       });
 
+      console.log(`✅ Login successful: ${updatedUser.username}`);
       res.json({ user: updatedUser, token: user.id });
     } catch (error: any) {
-      console.error("Login Error:", error);
+      console.error("❌ Login Error:", error);
       res.status(500).json({ error: error.message || "Giriş sırasında hata oluştu" });
     }
   });
@@ -119,7 +142,7 @@ export async function registerRoutes(
 
       res.json({ user: updatedUser });
     } catch (error: any) {
-      console.error("Auth Me Error:", error);
+      console.error("❌ Auth Me Error:", error);
       res.status(500).json({ error: error.message || "Kullanıcı bilgileri alınamadı" });
     }
   });
@@ -144,7 +167,7 @@ export async function registerRoutes(
       
       res.json(users);
     } catch (error: any) {
-      console.error("Get Users Error:", error);
+      console.error("❌ Get Users Error:", error);
       res.status(500).json({ error: error.message || "Kullanıcılar getirilemedi" });
     }
   });
@@ -162,7 +185,7 @@ export async function registerRoutes(
       const messages = await storage.getMessages(token, userId);
       res.json(messages);
     } catch (error: any) {
-      console.error("Get Messages Error:", error);
+      console.error("❌ Get Messages Error:", error);
       res.status(500).json({ error: error.message || "Mesajlar getirilemedi" });
     }
   });
@@ -183,7 +206,6 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Gönderici bulunamadı" });
       }
 
-      // storage.getMessageCount bir Promise döndüğü için await ekledik
       const messageCount = await storage.getMessageCount(token, receiverId);
       const FREE_MESSAGE_LIMIT = 3;
       
@@ -210,50 +232,57 @@ export async function registerRoutes(
 
       res.json({ message, isPaid });
     } catch (error: any) {
-      console.error("Message Error:", error);
+      console.error("❌ Message Error:", error);
       res.status(500).json({ error: error.message || "Mesaj gönderilemedi" });
     }
   });
 
   // --- WEBSOCKET KURULUMU ---
-  if (process.env.VERCEL !== '1') {
-    const wss = new WebSocketServer({ server: httpServer });
+  // Railway production ortamında WebSocket desteği
+  const wss = new WebSocketServer({ 
+    server: httpServer,
+    path: '/ws'
+  });
 
-    wss.on("connection", (ws: WebSocket, req) => {
-      let token: string | null = null;
-      if (req.url) {
-        const urlParams = new URLSearchParams(req.url.split('?')[1]);
-        token = urlParams.get('token');
-      }
+  wss.on("connection", (ws: WebSocket, req) => {
+    let token: string | null = null;
+    if (req.url) {
+      const urlParams = new URLSearchParams(req.url.split('?')[1]);
+      token = urlParams.get('token');
+    }
 
-      if (!token) {
-        ws.close(1008, "Token required");
-        return;
-      }
+    if (!token) {
+      ws.close(1008, "Token required");
+      return;
+    }
 
-      wsClients.set(token, ws);
-      storage.updateUser(token, { isOnline: true, lastActive: new Date() }).then(() => {
-        broadcastUserUpdate({ type: "user_online", userId: token });
-      }).catch(err => {
-        console.error("WebSocket user update error:", err);
-      });
-
-      ws.on("close", () => {
-        if (token) {
-          wsClients.delete(token);
-          storage.updateUser(token, { isOnline: false, lastActive: new Date() }).then(() => {
-            broadcastUserUpdate({ type: "user_offline", userId: token });
-          }).catch(err => {
-            console.error("WebSocket disconnect error:", err);
-          });
-        }
-      });
-
-      ws.on("error", (error) => {
-        console.error("WebSocket error:", error);
-      });
+    wsClients.set(token, ws);
+    console.log(`🔌 WebSocket connected: ${token}`);
+    
+    storage.updateUser(token, { isOnline: true, lastActive: new Date() }).then(() => {
+      broadcastUserUpdate({ type: "user_online", userId: token });
+    }).catch(err => {
+      console.error("WebSocket user update error:", err);
     });
-  }
+
+    ws.on("close", () => {
+      if (token) {
+        wsClients.delete(token);
+        console.log(`🔌 WebSocket disconnected: ${token}`);
+        storage.updateUser(token, { isOnline: false, lastActive: new Date() }).then(() => {
+          broadcastUserUpdate({ type: "user_offline", userId: token });
+        }).catch(err => {
+          console.error("WebSocket disconnect error:", err);
+        });
+      }
+    });
+
+    ws.on("error", (error) => {
+      console.error("WebSocket error:", error);
+    });
+  });
+
+  console.log("✅ WebSocket server initialized");
 
   return httpServer;
 }

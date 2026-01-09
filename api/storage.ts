@@ -20,36 +20,54 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    } catch (error) {
+      console.error("Error getting user:", error);
+      throw error;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    try {
+      const normalizedEmail = email.toLowerCase().trim();
+      const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail));
+      return user;
+    } catch (error) {
+      console.error("Error getting user by email:", error);
+      throw error;
+    }
   }
 
   async getAllUsers(excludeId?: string, sortByLocation?: { lat: number; lng: number }): Promise<User[]> {
-    let allUsers = await db.select().from(users);
-    if (excludeId) {
-      allUsers = allUsers.filter(u => u.id !== excludeId);
+    try {
+      let allUsers = await db.select().from(users);
+      
+      if (excludeId) {
+        allUsers = allUsers.filter(u => u.id !== excludeId);
+      }
+      
+      if (sortByLocation) {
+        allUsers.sort((a, b) => {
+          if (!a.location || !b.location) return 0;
+          const locA = a.location as { lat: number; lng: number };
+          const locB = b.location as { lat: number; lng: number };
+          const distA = this.calculateDistance(sortByLocation, locA);
+          const distB = this.calculateDistance(sortByLocation, locB);
+          return distA - distB;
+        });
+      }
+      
+      return allUsers;
+    } catch (error) {
+      console.error("Error getting all users:", error);
+      throw error;
     }
-    
-    if (sortByLocation) {
-      allUsers.sort((a, b) => {
-        if (!a.location || !b.location) return 0;
-        const locA = a.location as { lat: number; lng: number };
-        const locB = b.location as { lat: number; lng: number };
-        const distA = this.calculateDistance(sortByLocation, locA);
-        const distB = this.calculateDistance(sortByLocation, locB);
-        return distA - distB;
-      });
-    }
-    return allUsers;
   }
 
   private calculateDistance(loc1: { lat: number; lng: number }, loc2: { lat: number; lng: number }): number {
-    const R = 6371; 
+    const R = 6371; // Earth's radius in km
     const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
     const dLon = (loc2.lng - loc1.lng) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -60,75 +78,133 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = insertUser.id || `u${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
-    // Şemada olmayan alanları (şifre gibi) ayıklıyoruz ki veritabanı hata vermesin
-    const { ...userData } = insertUser;
-
-    const [user] = await db.insert(users).values({
-      ...userData,
-      id,
-      lastActive: new Date(),
-      isOnline: true,
-      diamonds: insertUser.diamonds || 10,
-      vipStatus: insertUser.vipStatus || 'none'
-    }).returning();
-    
-    return user;
+    try {
+      const id = insertUser.id || `u${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      
+      // Email'i normalize et
+      const normalizedEmail = insertUser.email.toLowerCase().trim();
+      
+      const [user] = await db.insert(users).values({
+        id,
+        username: insertUser.username.trim(),
+        email: normalizedEmail,
+        password: insertUser.password, // ÖNEMLİ: Şifre kaydediliyor
+        photoUrl: insertUser.photoUrl,
+        bio: insertUser.bio || null,
+        interests: insertUser.interests || null,
+        location: insertUser.location || null,
+        diamonds: insertUser.diamonds !== undefined ? insertUser.diamonds : 10,
+        vipStatus: insertUser.vipStatus || 'none',
+        vipExpiry: insertUser.vipExpiry || null,
+        isOnline: insertUser.isOnline !== undefined ? insertUser.isOnline : true,
+        lastActive: new Date(),
+        blockedUsers: insertUser.blockedUsers || null
+      }).returning();
+      
+      // Şifre alanının kaydedildiğini doğrula
+      if (!user.password) {
+        console.error("⚠️  Warning: User created but password field is empty!");
+      }
+      
+      return user;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
-    const [updated] = await db.update(users)
-      .set({ ...updates, lastActive: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    if (!updated) throw new Error('User not found');
-    return updated;
+    try {
+      const [updated] = await db.update(users)
+        .set({ ...updates, lastActive: new Date() })
+        .where(eq(users.id, id))
+        .returning();
+      
+      if (!updated) {
+        throw new Error('User not found');
+      }
+      
+      return updated;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      throw error;
+    }
   }
 
   async getMessages(senderId: string, receiverId: string): Promise<Message[]> {
-    return await db.select().from(messages).where(
-      or(
-        and(eq(messages.senderId, senderId), eq(messages.receiverId, receiverId)),
-        and(eq(messages.senderId, receiverId), eq(messages.receiverId, senderId))
-      )
-    );
+    try {
+      return await db.select().from(messages).where(
+        or(
+          and(eq(messages.senderId, senderId), eq(messages.receiverId, receiverId)),
+          and(eq(messages.senderId, receiverId), eq(messages.receiverId, senderId))
+        )
+      );
+    } catch (error) {
+      console.error("Error getting messages:", error);
+      throw error;
+    }
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const id = message.id || `msg_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    const [newMessage] = await db.insert(messages).values({
-      ...message,
-      id,
-      createdAt: new Date(),
-      isRead: false,
-      isPaid: message.isPaid || false
-    }).returning();
-    return newMessage;
+    try {
+      const id = message.id || `msg_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      const [newMessage] = await db.insert(messages).values({
+        ...message,
+        id,
+        createdAt: new Date(),
+        isRead: false,
+        isPaid: message.isPaid || false
+      }).returning();
+      return newMessage;
+    } catch (error) {
+      console.error("Error creating message:", error);
+      throw error;
+    }
   }
 
   async getMessageCount(senderId: string, receiverId: string) {
+    // TODO: Implement proper message counting with a separate table
     return { senderId, receiverId, freeMessagesSent: 0, paidMessagesSent: 0 };
   }
 
-  async incrementFreeMessageCount(_s: string, _r: string): Promise<void> {}
-  async incrementPaidMessageCount(_s: string, _r: string): Promise<void> {}
+  async incrementFreeMessageCount(_s: string, _r: string): Promise<void> {
+    // TODO: Implement proper message counting
+  }
+  
+  async incrementPaidMessageCount(_s: string, _r: string): Promise<void> {
+    // TODO: Implement proper message counting
+  }
 
   async deleteMessage(_s: string, _r: string, messageId: string): Promise<void> {
-    await db.delete(messages).where(eq(messages.id, messageId));
+    try {
+      await db.delete(messages).where(eq(messages.id, messageId));
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      throw error;
+    }
   }
 
   async deleteAllMessages(senderId: string, receiverId: string): Promise<void> {
-    await db.delete(messages).where(
-      or(
-        and(eq(messages.senderId, senderId), eq(messages.receiverId, receiverId)),
-        and(eq(messages.senderId, receiverId), eq(messages.receiverId, senderId))
-      )
-    );
+    try {
+      await db.delete(messages).where(
+        or(
+          and(eq(messages.senderId, senderId), eq(messages.receiverId, receiverId)),
+          and(eq(messages.senderId, receiverId), eq(messages.receiverId, senderId))
+        )
+      );
+    } catch (error) {
+      console.error("Error deleting all messages:", error);
+      throw error;
+    }
   }
 
   async blockUser(userId: string, blockedUserId: string): Promise<void> {
-    await this.deleteAllMessages(userId, blockedUserId);
+    try {
+      await this.deleteAllMessages(userId, blockedUserId);
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      throw error;
+    }
   }
 }
 
