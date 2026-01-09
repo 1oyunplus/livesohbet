@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes.js"; // '..' yerine '.' yaptık, dosyaların api klasöründe olduğunu varsayıyoruz
+import { registerRoutes } from "./routes.js";
 import { createServer } from "http";
 import path from "path";
 import fs from "fs";
