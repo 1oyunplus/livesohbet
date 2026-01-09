@@ -9,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
   const { login, register } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -18,16 +19,32 @@ export default function Login() {
 
     try {
       if (isLogin) {
+        // Giriş İşlemi
         const result = await login(email, password);
-        // Başarılıysa App.tsx içindeki Redirect sayesinde otomatik yönleneceksin
+        if (result && result.success) {
+          setLocation("/");
+        }
       } else {
-        // Kayıt işlemi
-        // Login.tsx içinde handleSubmit içinde
-const result = await register(username, email, password);
-console.log("Register sonucu:", result); // Tarayıcı konsolunda bunu görmen lazım
-if (result && result.success) {
-   setLocation("/");
-    } 
+        // Kayıt İşlemi
+        if (!username.trim()) {
+          alert("Kullanıcı adı gereklidir");
+          setIsLoading(false);
+          return;
+        }
+        
+        const result = await register(username, email, password);
+        
+        // Eğer kayıt başarılıysa (use-auth içinden success:true dönerse)
+        if (result && result.success) {
+          console.log("Kayıt başarılı, ana sayfaya yönlendiriliyor...");
+          setLocation("/");
+        }
+      }
+    } catch (err) {
+      console.error("Beklenmedik bir hata oluştu:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -63,30 +80,30 @@ if (result && result.success) {
           )}
 
           <div className="space-y-2">
-              <label className="text-sm font-medium text-white/80 flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                E-posta
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="E-posta adresinizi girin"
+            <label className="text-sm font-medium text-white/80 flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              E-posta
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="E-posta adresinizi girin"
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
               required
             />
           </div>
 
           <div className="space-y-2">
-              <label className="text-sm font-medium text-white/80 flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                Şifre
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Şifrenizi girin"
+            <label className="text-sm font-medium text-white/80 flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              Şifre
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Şifrenizi girin"
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
               required
             />
