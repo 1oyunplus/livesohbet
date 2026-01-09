@@ -1,7 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "../server/routes.js";
-import { serveStatic } from "../server/static.js";
 import { createServer } from "http";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -56,34 +61,45 @@ app.use((req, res, next) => {
   next();
 });
 
-// Başlatma mantığını bir değişkene atayalım
 const setupPromise = (async () => {
+  // Rotaları kaydet
   await registerRoutes(httpServer, app);
 
+  // Hata yakalama
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
-    // Vercel'de throw err yerine sadece loglamak daha iyidir
     console.error(err);
   });
 
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
+  // STATİK DOSYA SUNUMU (Railway ve Vercel Uyumu)
+  if (process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT) {
+    // api klasöründen bir üst dizine çıkıp dist/public'e ulaşıyoruz
+    const publicPath = path.resolve(__dirname, "..", "dist", "public");
+    
+    if (fs.existsSync(publicPath)) {
+      app.use(express.static(publicPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(publicPath, "index.html"));
+      });
+      log("Static files being served from: " + publicPath);
+    } else {
+      log("Warning: Static path not found: " + publicPath, "error");
+    }
   } else {
+    // Development (Vite) modu
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
 
-  // Sadece Vercel dışındaki ortamlarda listen çalışsın
+  // Sunucuyu başlat (Railway için)
   if (process.env.VERCEL !== '1') {
     const port = parseInt(process.env.PORT || "5000", 10);
-    httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
+    httpServer.listen({ port, host: "0.0.0.0" }, () => {
       log(`serving on port ${port}`);
     });
   }
 })();
 
-// VERCEL İÇİN KRİTİK EKLEME:
-// Express uygulamasını dışa aktarıyoruz
 export default app;
