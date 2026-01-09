@@ -9,13 +9,13 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // WebSocket bağlantıları için güvenli bir Map (Sadece desteklenen ortamlarda dolacak)
+  // WebSocket bağlantıları için güvenli bir Map
   const wsClients = new Map<string, WebSocket>();
 
-  // Yardımcı Fonksiyonlar: Broadcast (Vercel'de sessizce pas geçer)
+  // Yardımcı Fonksiyonlar
   function broadcastMessage(userId: string, data: any) {
     const ws = wsClients.get(userId);
-    if (ws && ws.readyState === 1) { // 1 = OPEN
+    if (ws && ws.readyState === 1) {
       ws.send(JSON.stringify(data));
     }
   }
@@ -32,7 +32,7 @@ export async function registerRoutes(
     res.json({ status: "ok", env: process.env.VERCEL ? "production" : "development" });
   });
 
-  // Kullanıcı kayıt
+  // --- KULLANICI KAYIT ---
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, email, password, photoUrl } = req.body;
@@ -49,6 +49,7 @@ export async function registerRoutes(
       const user = await storage.createUser({
         username,
         email,
+        password, // Not: Gerçek projede hash'lenmelidir
         photoUrl: photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`,
         diamonds: 10,
         vipStatus: "none",
@@ -56,13 +57,15 @@ export async function registerRoutes(
         location: { lat: 40.7128, lng: -74.0060 }
       });
 
-      res.json({ user, token: user.id });
+      // Frontend'in beklediği formatta token gönderiyoruz
+      res.status(201).json({ user, token: user.id });
     } catch (error: any) {
+      console.error("Register Error:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Kullanıcı giriş
+  // --- KULLANICI GİRİŞ ---
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -71,7 +74,7 @@ export async function registerRoutes(
       }
 
       const user = await storage.getUserByEmail(email);
-      if (!user) {
+      if (!user || user.password !== password) {
         return res.status(401).json({ error: "Geçersiz giriş bilgileri" });
       }
 
@@ -82,7 +85,7 @@ export async function registerRoutes(
     }
   });
 
-  // Kullanıcı bilgilerini getir
+  // --- KULLANICI BİLGİLERİNİ GETİR ---
   app.get("/api/auth/me", async (req, res) => {
     try {
       const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
@@ -97,7 +100,7 @@ export async function registerRoutes(
     }
   });
 
-  // Tüm kullanıcıları getir
+  // --- TÜM KULLANICILARI GETİR ---
   app.get("/api/users", async (req, res) => {
     try {
       const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
@@ -114,7 +117,7 @@ export async function registerRoutes(
     }
   });
 
-  // Mesaj gönder (limit kontrolü ile)
+  // --- MESAJ GÖNDER ---
   app.post("/api/messages", async (req, res) => {
     try {
       const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
@@ -127,16 +130,17 @@ export async function registerRoutes(
       const sender = await storage.getUser(token);
       if (!sender) return res.status(401).json({ error: "Gönderici bulunamadı" });
 
-      const messageCount = storage.getMessageCount(token, receiverId);
+      // storage.getMessageCount bir Promise döndüğü için await ekledik
+      const messageCount = await storage.getMessageCount(token, receiverId);
       const FREE_MESSAGE_LIMIT = 3;
       
       let isPaid = false;
       if (messageCount.freeMessagesSent < FREE_MESSAGE_LIMIT) {
-        storage.incrementFreeMessageCount(token, receiverId);
+        await storage.incrementFreeMessageCount(token, receiverId);
       } else if (useDiamonds && sender.diamonds >= 1) {
         isPaid = true;
         await storage.updateUser(token, { diamonds: sender.diamonds - 1 });
-        storage.incrementPaidMessageCount(token, receiverId);
+        await storage.incrementPaidMessageCount(token, receiverId);
       } else {
         return res.status(402).json({ error: "Elmas gerekiyor", requiresDiamonds: true });
       }
@@ -148,27 +152,25 @@ export async function registerRoutes(
         isPaid
       });
 
-      // WebSocket Bildirimleri (Sadece Vercel dışında çalışır)
       broadcastMessage(receiverId, { type: "new_message", message });
       broadcastMessage(token, { type: "new_message", message });
 
       res.json({ message, isPaid });
     } catch (error: any) {
+      console.error("Message Error:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // DİĞER ROUTE'LAR (Profil, Mesaj Geçmişi vb. Buraya eklenebilir)
-
-  // --- WEBSOCKET KURULUMU (SADECE VERCEL DIŞINDA) ---
+  // --- WEBSOCKET KURULUMU ---
   if (process.env.VERCEL !== '1') {
     const wss = new WebSocketServer({ server: httpServer });
 
     wss.on("connection", (ws: WebSocket, req) => {
       let token: string | null = null;
       if (req.url) {
-        const match = req.url.match(/[?&]token=([^&]+)/);
-        token = match ? match[1] : null;
+        const urlParams = new URLSearchParams(req.url.split('?')[1]);
+        token = urlParams.get('token');
       }
 
       if (!token) {
@@ -177,22 +179,17 @@ export async function registerRoutes(
       }
 
       wsClients.set(token, ws);
-
-      storage.getUser(token).then(user => {
-        if (user) {
-          storage.updateUser(token, { isOnline: true, lastActive: new Date() });
-          broadcastUserUpdate({ type: "user_online", userId: token });
-        }
+      storage.updateUser(token, { isOnline: true, lastActive: new Date() }).then(() => {
+        broadcastUserUpdate({ type: "user_online", userId: token });
       });
 
       ws.on("close", () => {
-        wsClients.delete(token!);
-        storage.getUser(token!).then(user => {
-          if (user) {
-            storage.updateUser(token!, { isOnline: false, lastActive: new Date() });
+        if (token) {
+          wsClients.delete(token);
+          storage.updateUser(token, { isOnline: false, lastActive: new Date() }).then(() => {
             broadcastUserUpdate({ type: "user_offline", userId: token });
-          }
-        });
+          });
+        }
       });
     });
   }
