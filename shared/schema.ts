@@ -1,59 +1,48 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+-- Mevcut tabloları temizleyelim (Hata almamak için)
+DROP TABLE IF EXISTS message_counts;
+DROP TABLE IF EXISTS friendships;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS users;
 
-// We use these table definitions to derive types, even if using Firebase
-export const users = pgTable("users", {
-  id: text("id").primaryKey(), // Firebase UID
-  username: text("username").notNull(),
-  email: text("email").notNull(),
-  photoUrl: text("photo_url"),
-  isOnline: boolean("is_online").default(false),
-  diamonds: integer("diamonds").default(10),
-  vipStatus: text("vip_status").default("none"), // none, bronze, silver, gold
-  location: jsonb("location"), // { lat: number, lng: number }
-  lastActive: timestamp("last_active").defaultNow(),
-  age: integer("age"),
-  gender: text("gender"), // erkek, kadın, diğer
-  birthDate: timestamp("birth_date"),
-  hobbies: jsonb("hobbies"), // string array
-  bio: text("bio"),
-});
+-- Senin schema.ts dosyana birebir uyumlu tablolar
+CREATE TABLE users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL,
+    email TEXT NOT NULL,
+    photo_url TEXT,
+    is_online BOOLEAN DEFAULT FALSE,
+    diamonds INTEGER DEFAULT 10,
+    vip_status TEXT DEFAULT 'none',
+    location JSONB,
+    last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    age INTEGER,
+    gender TEXT,
+    birth_date TIMESTAMP,
+    hobbies JSONB,
+    bio TEXT
+);
 
-export const messages = pgTable("messages", {
-  id: text("id").primaryKey(),
-  senderId: text("sender_id").notNull(),
-  receiverId: text("receiver_id").notNull(),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  isRead: boolean("is_read").default(false),
-  isPaid: boolean("is_paid").default(false), // Elmas ile gönderilen mesajlar için
-});
+CREATE TABLE messages (
+    id TEXT PRIMARY KEY,
+    sender_id TEXT NOT NULL,
+    receiver_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT FALSE,
+    is_paid BOOLEAN DEFAULT FALSE
+);
 
-export const messageCounts = pgTable("message_counts", {
-  id: text("id").primaryKey(),
-  senderId: text("sender_id").notNull(),
-  receiverId: text("receiver_id").notNull(),
-  freeMessagesSent: integer("free_messages_sent").default(0),
-  paidMessagesSent: integer("paid_messages_sent").default(0),
-});
+CREATE TABLE message_counts (
+    id TEXT PRIMARY KEY,
+    sender_id TEXT NOT NULL,
+    receiver_id TEXT NOT NULL,
+    free_messages_sent INTEGER DEFAULT 0,
+    paid_messages_sent INTEGER DEFAULT 0
+);
 
-export const friendships = pgTable("friendships", {
-  id: text("id").primaryKey(),
-  requesterId: text("requester_id").notNull(),
-  receiverId: text("receiver_id").notNull(),
-  status: text("status").notNull(), // pending, accepted, blocked
-});
-
-// Schemas
-export const insertUserSchema = createInsertSchema(users);
-export const insertMessageSchema = createInsertSchema(messages);
-export const insertFriendshipSchema = createInsertSchema(friendships);
-
-// Types
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type Message = typeof messages.$inferSelect;
-export type Friendship = typeof friendships.$inferSelect;
-
-export type VIPStatus = 'none' | 'bronze' | 'silver' | 'gold';
+CREATE TABLE friendships (
+    id TEXT PRIMARY KEY,
+    requester_id TEXT NOT NULL,
+    receiver_id TEXT NOT NULL,
+    status TEXT NOT NULL
+);
