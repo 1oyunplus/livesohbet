@@ -146,9 +146,20 @@ export function useAuth() {
       }
 
       const data = await res.json();
+      
+      // KULLANICIYI SET ET
       setUser(data.user);
-      localStorage.setItem('auth_token', data.token);
-      connectWebSocket(data.token);
+      
+      // TOKEN VARSA KAYDET
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+        // WebSocket bağlantısını hata alsa bile akışı bozmaması için try-catch içine alıyoruz
+        try {
+          connectWebSocket(data.token);
+        } catch (wsError) {
+          console.error("WebSocket başlatılamadı:", wsError);
+        }
+      }
       
       toast({
         title: "Hoş geldiniz!",
@@ -157,6 +168,7 @@ export function useAuth() {
       
       return { success: true };
     } catch (error: any) {
+      console.error("Kayıt sırasında hata:", error);
       toast({
         title: "Kayıt başarısız",
         description: error.message,
@@ -164,7 +176,7 @@ export function useAuth() {
       });
       return { success: false, error: error.message };
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // BUTONU HER DURUMDA SERBEST BIRAK
     }
   };
 
