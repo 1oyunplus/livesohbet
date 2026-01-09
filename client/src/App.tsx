@@ -6,7 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { VipModal } from "@/components/VipModal";
 import { useAuth } from "@/hooks/use-auth";
 
-// Pages
+// Sayfalar
 import Discover from "@/pages/Discover";
 import Chat from "@/pages/Chat";
 import Store from "@/pages/Store";
@@ -18,6 +18,7 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { user, isLoading } = useAuth();
 
+  // Yükleme sırasında boş ekran yerine bir spinner gösterelim
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
@@ -28,22 +29,26 @@ function Router() {
 
   return (
     <Switch>
-      {/* Login sayfası her zaman erişilebilir olmalı */}
+      {/* Giriş sayfası: Kullanıcı varsa ana sayfaya atar */}
       <Route path="/login">
         {user ? <Redirect to="/" /> : <Login />}
       </Route>
       
-      {/* Diğer sayfalar için giriş kontrolü */}
+      {/* Ana sayfalar: Giriş yoksa Login'e atar */}
       <Route path="/">
         {!user ? <Redirect to="/login" /> : <Discover />}
       </Route>
-      <Route path="/chat" component={Chat} />
-      <Route path="/chat/:id" component={Chat} />
-      <Route path="/store" component={Store} />
-      <Route path="/profile" component={Profile} />
-      <Route path="/edit-profile" component={EditProfile} />
+      <Route path="/chat">
+        {!user ? <Redirect to="/login" /> : <Chat />}
+      </Route>
+      <Route path="/store">
+        {!user ? <Redirect to="/login" /> : <Store />}
+      </Route>
+      <Route path="/profile">
+        {!user ? <Redirect to="/login" /> : <Profile />}
+      </Route>
       
-      {/* Hiçbiri tutmazsa 404 yerine login'e atalım şimdilik */}
+      {/* Bilinmeyen rotaları Login'e yönlendir */}
       <Route>
         <Redirect to="/login" />
       </Route>
