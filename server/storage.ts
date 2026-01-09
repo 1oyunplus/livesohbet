@@ -20,42 +20,32 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    try {
-      const [user] = await db.select().from(users).where(eq(users.id, id));
-      return user;
-    } catch (e) {
-      return undefined;
-    }
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    try {
-      const [user] = await db.select().from(users).where(eq(users.email, email));
-      return user;
-    } catch (e) {
-      return undefined;
-    }
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
   }
 
   async getAllUsers(excludeId?: string, sortByLocation?: { lat: number; lng: number }): Promise<User[]> {
-    try {
-      let allUsers = await db.select().from(users);
-      if (excludeId) {
-        allUsers = allUsers.filter(u => u.id !== excludeId);
-      }
-      
-      if (sortByLocation) {
-        allUsers.sort((a, b) => {
-          if (!a.location || !b.location) return 0;
-          const distA = this.calculateDistance(sortByLocation, a.location as { lat: number; lng: number });
-          const distB = this.calculateDistance(sortByLocation, b.location as { lat: number; lng: number });
-          return distA - distB;
-        });
-      }
-      return allUsers;
-    } catch (e) {
-      return [];
+    let allUsers = await db.select().from(users);
+    if (excludeId) {
+      allUsers = allUsers.filter(u => u.id !== excludeId);
     }
+    
+    if (sortByLocation) {
+      allUsers.sort((a, b) => {
+        if (!a.location || !b.location) return 0;
+        const locA = a.location as { lat: number; lng: number };
+        const locB = b.location as { lat: number; lng: number };
+        const distA = this.calculateDistance(sortByLocation, locA);
+        const distB = this.calculateDistance(sortByLocation, locB);
+        return distA - distB;
+      });
+    }
+    return allUsers;
   }
 
   private calculateDistance(loc1: { lat: number; lng: number }, loc2: { lat: number; lng: number }): number {
@@ -71,14 +61,19 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = insertUser.id || `u${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    // Şemada olmayan alanları (şifre gibi) ayıklıyoruz ki veritabanı hata vermesin
+    const { ...userData } = insertUser;
+
     const [user] = await db.insert(users).values({
-      ...insertUser,
+      ...userData,
       id,
       lastActive: new Date(),
       isOnline: true,
       diamonds: insertUser.diamonds || 10,
       vipStatus: insertUser.vipStatus || 'none'
     }).returning();
+    
     return user;
   }
 
