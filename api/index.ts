@@ -32,19 +32,17 @@ export function log(message: string, source = "express") {
   try {
     log("🚀 Starting application...");
     
-    // Environment check
     if (!process.env.DATABASE_URL) {
       throw new Error("❌ DATABASE_URL is not set! Please configure it in Railway environment variables.");
     }
     
     log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    log(`🗄️  Database: Connected`);
+    log(`🗄️ Database: Connected`);
 
     // 1. Önce API Rotalarını ve WebSocket'i Kaydet
     await registerRoutes(httpServer, app);
-    log("✅ API routes registered");
+    log("✅ API routes & WebSocket registered");
 
-    // 2. Statik Dosyalar (Production Build)
     const publicPath = path.resolve(process.cwd(), "dist", "public");
     
     if (fs.existsSync(publicPath)) {
@@ -54,77 +52,69 @@ export function log(message: string, source = "express") {
       }));
       log("✅ Static files configured");
 
-      // 3. SPA Routing: API dışındaki tüm rotaları React'e yönlendir
+      // 3. SPA Routing: KRİTİK DÜZELTME BURADA
       app.get("*", (req, res, next) => {
-        // API isteklerini atla
-        if (req.path.startsWith("/api") || req.path.startsWith("/ws")) {
+        // WebSocket ve API isteklerini HTML'e çarptırma
+        if (
+          req.path.startsWith("/api") || 
+          req.path.startsWith("/ws") || 
+          req.path.startsWith("/socket.io")
+        ) {
           return next();
         }
         
-        // Statik dosya kontrolü
-        const filePath = path.join(publicPath, req.path);
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        // Uzantısı olan dosyaları (.png, .js) HTML olarak sunma, yoksa 404 ver
+        if (req.path.includes('.')) {
+          const filePath = path.join(publicPath, req.path);
+          if (!fs.existsSync(filePath)) {
+            return res.status(404).end();
+          }
           return next();
         }
         
-        // Tüm diğer rotaları index.html'e yönlendir
+        // Tüm navigasyon rotalarını React'e yönlendir
         res.sendFile(path.join(publicPath, "index.html"));
       });
       
-      log("✅ SPA routing configured");
+      log("✅ SPA routing bridge active");
     } else {
-      log("⚠️  Warning: Frontend build not found. Run 'npm run build' first.");
+      log("⚠️ Warning: Frontend build not found.");
     }
 
     // Global Error Handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || 500;
       const message = err.message || "Internal Server Error";
-      
       log(`❌ Error ${status}: ${message}`, "error");
-      
       res.status(status).json({ 
         error: message,
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
       });
     });
 
-    // Railway otomatik PORT ayarlar, yoksa 5000 kullan
     const port = Number(process.env.PORT) || 5000;
-    
     httpServer.listen(port, "0.0.0.0", () => {
       log(`\n${'='.repeat(50)}`);
-      log(`🎉 Server is running!`);
-      log(`📡 Port: ${port}`);
-      log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-      log(`🔗 API Health: http://localhost:${port}/api/health`);
+      log(`🎉 Server is running! Port: ${port}`);
       log(`${'-'.repeat(50)}\n`);
     });
 
   } catch (error: any) {
-    console.error("\n❌ FATAL ERROR - Application failed to start:");
-    console.error(error.message);
-    console.error("\nStack trace:");
-    console.error(error.stack);
+    console.error("\n❌ FATAL ERROR:", error.message);
     process.exit(1);
   }
 })();
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  log('⚠️  SIGTERM signal received: closing HTTP server');
+// Graceful shutdown (Claude'un eklediği önemli kısım)
+const shutdown = () => {
+  log('⚠️ Closing HTTP server');
   httpServer.close(() => {
     log('✅ HTTP server closed');
     process.exit(0);
   });
-});
+};
 
-process.on('SIGINT', () => {
-  log('⚠️  SIGINT signal received: closing HTTP server');
-  httpServer.close(() => {
-    log('✅ HTTP server closed');
-    process.exit(0);
-  });
-});
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 export default app;
