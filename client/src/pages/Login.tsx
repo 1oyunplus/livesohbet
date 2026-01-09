@@ -17,17 +17,29 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      let result;
       if (isLogin) {
-        const result = await login(email, password);
-        if (result.success) {
-          setLocation("/");
-        }
+        result = await login(email, password);
       } else {
         if (!username.trim()) {
           alert("Kullanıcı adı gereklidir");
           setIsLoading(false);
           return;
         }
+        result = await register(username, email, password);
+      }
+
+      // BAŞARILI DURUMDA ZORLA YÖNLENDİR
+      if (result && result.success) {
+        console.log("Giriş/Kayıt başarılı, ana sayfaya gidiliyor...");
+        window.location.href = "/"; // setLocation yerine doğrudan tarayıcıyı yönlendiriyoruz
+      }
+    } catch (err) {
+      console.error("Hata oluştu:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
         const result = await register(username, email, password);
         if (result.success) {
           setLocation("/");
