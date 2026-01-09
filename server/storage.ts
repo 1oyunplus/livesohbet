@@ -1,5 +1,5 @@
-import { users, type User, type InsertUser, messages, type Message, type InsertMessage } from "../shared/schema";
-import { db } from "./db";
+import { users, type User, type InsertUser, messages, type Message, type InsertMessage } from "../shared/schema.js";
+import { db } from "./db.js";
 import { eq, and, or } from "drizzle-orm";
 
 export interface IStorage {
@@ -20,30 +20,42 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    } catch (e) {
+      return undefined;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user;
+    } catch (e) {
+      return undefined;
+    }
   }
 
   async getAllUsers(excludeId?: string, sortByLocation?: { lat: number; lng: number }): Promise<User[]> {
-    let allUsers = await db.select().from(users);
-    if (excludeId) {
-      allUsers = allUsers.filter(u => u.id !== excludeId);
+    try {
+      let allUsers = await db.select().from(users);
+      if (excludeId) {
+        allUsers = allUsers.filter(u => u.id !== excludeId);
+      }
+      
+      if (sortByLocation) {
+        allUsers.sort((a, b) => {
+          if (!a.location || !b.location) return 0;
+          const distA = this.calculateDistance(sortByLocation, a.location as { lat: number; lng: number });
+          const distB = this.calculateDistance(sortByLocation, b.location as { lat: number; lng: number });
+          return distA - distB;
+        });
+      }
+      return allUsers;
+    } catch (e) {
+      return [];
     }
-    
-    if (sortByLocation) {
-      allUsers.sort((a, b) => {
-        if (!a.location || !b.location) return 0;
-        const distA = this.calculateDistance(sortByLocation, a.location as { lat: number; lng: number });
-        const distB = this.calculateDistance(sortByLocation, b.location as { lat: number; lng: number });
-        return distA - distB;
-      });
-    }
-    return allUsers;
   }
 
   private calculateDistance(loc1: { lat: number; lng: number }, loc2: { lat: number; lng: number }): number {
@@ -101,12 +113,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessageCount(senderId: string, receiverId: string) {
-    // Not: Veritabanında ayrı bir tablo yoksa 0 döner, hata vermez.
     return { senderId, receiverId, freeMessagesSent: 0, paidMessagesSent: 0 };
   }
 
-  async incrementFreeMessageCount(senderId: string, receiverId: string): Promise<void> {}
-  async incrementPaidMessageCount(senderId: string, receiverId: string): Promise<void> {}
+  async incrementFreeMessageCount(_s: string, _r: string): Promise<void> {}
+  async incrementPaidMessageCount(_s: string, _r: string): Promise<void> {}
 
   async deleteMessage(_s: string, _r: string, messageId: string): Promise<void> {
     await db.delete(messages).where(eq(messages.id, messageId));
