@@ -17,34 +17,27 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      let result;
       if (isLogin) {
-        result = await login(email, password);
+        const result = await login(email, password);
+        if (result && result.success) {
+          // Giriş başarılıysa ana sayfaya git
+          setLocation("/");
+        }
       } else {
         if (!username.trim()) {
           alert("Kullanıcı adı gereklidir");
           setIsLoading(false);
           return;
         }
-        result = await register(username, email, password);
-      }
-
-      // BAŞARILI DURUMDA ZORLA YÖNLENDİR
-      if (result && result.success) {
-        console.log("Giriş/Kayıt başarılı, ana sayfaya gidiliyor...");
-        window.location.href = "/"; // setLocation yerine doğrudan tarayıcıyı yönlendiriyoruz
-      }
-    } catch (err) {
-      console.error("Hata oluştu:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        // İŞTE BURASI DÜZELTİLDİ: Artık handleSubmit async olduğu için await çalışacak
         const result = await register(username, email, password);
-        if (result.success) {
+        if (result && result.success) {
+          // Kayıt başarılıysa ana sayfaya git
           setLocation("/");
         }
       }
+    } catch (error) {
+      console.error("Auth error:", error);
     } finally {
       setIsLoading(false);
     }
