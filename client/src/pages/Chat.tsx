@@ -271,7 +271,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="h-screen md:h-[calc(100vh-2rem)] md:m-4 flex flex-col glass-panel md:rounded-3xl overflow-hidden max-w-5xl mx-auto relative z-10">
+    <div className="fixed inset-0 md:relative md:h-[calc(100vh-2rem)] md:m-4 flex flex-col glass-panel md:rounded-3xl overflow-hidden max-w-5xl mx-auto z-10 pb-20 md:pb-0">
       {/* Header */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -381,7 +381,7 @@ export default function Chat() {
       )}
 
       {/* Input */}
-      <div className="p-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
+      <div className="fixed md:relative bottom-20 md:bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-black/20 backdrop-blur-md z-50">
         <form 
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
           className="flex items-center gap-2 bg-white/5 border border-white/10 p-1.5 rounded-full pl-4 focus-within:bg-white/10 focus-within:border-primary/50 transition-all"
