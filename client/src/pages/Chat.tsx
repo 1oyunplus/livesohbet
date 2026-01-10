@@ -1,5 +1,5 @@
 import { useRoute } from "wouter";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Send, ArrowLeft, MoreVertical, Phone, Video, Trash2, Ban } from "lucide-react";
 import { motion } from "framer-motion";
 import { useUsers, useChatMessages } from "@/hooks/use-users";
@@ -13,7 +13,9 @@ export default function Chat() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   
-  // ✅ FIX 1: Kullanıcı verisi yüklenene kadar bekle
+  // ✅ FIX 2: useState'i her zaman en üstte çağır (conditional değil)
+  const [conversationUsers, setConversationUsers] = useState<string[]>([]);
+  
   const selectedUser = params?.id && users ? users.find(u => u.id === params.id) : null;
   const { data: messagesData, refetch: refetchMessages } = useChatMessages(params?.id || "");
   
@@ -43,13 +45,34 @@ export default function Chat() {
     }
   }, [authLoading, currentUser, setLocation]);
 
-  // ✅ FIX 1: Kullanıcı bulunamadıysa ve veriler yüklendiyse Discover'a yönlendir
+  // Kullanıcı bulunamadıysa ve veriler yüklendiyse Discover'a yönlendir
   useEffect(() => {
     if (match && params?.id && !usersLoading && users && !selectedUser) {
       console.warn(`Kullanıcı bulunamadı: ${params.id}`);
       setLocation("/");
     }
   }, [match, params?.id, usersLoading, users, selectedUser, setLocation]);
+
+  // ✅ FIX 2: Mesajlaşılan kullanıcıları fetch et (her zaman çalışır)
+  useEffect(() => {
+    if (!currentUser || match) return;
+    
+    const token = localStorage.getItem('auth_token');
+    fetch(`/api/messages?token=${token}&receiverId=ALL`)
+      .then(res => res.json())
+      .then((allMessages: Message[]) => {
+        const uniqueUserIds = new Set<string>();
+        allMessages.forEach((msg) => {
+          if (msg.senderId === currentUser.id) {
+            uniqueUserIds.add(msg.receiverId);
+          } else if (msg.receiverId === currentUser.id) {
+            uniqueUserIds.add(msg.senderId);
+          }
+        });
+        setConversationUsers(Array.from(uniqueUserIds));
+      })
+      .catch(console.error);
+  }, [currentUser, match]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -197,7 +220,13 @@ export default function Chat() {
 
   const messages = messagesData || [];
 
-  // ✅ FIX 2: Mesajlaşılan kullanıcıları filtrele
+  // ✅ FIX 2: useMemo ile displayUsers hesapla (hook sırası sabit kalır)
+  const displayUsers = useMemo(() => {
+    if (!users) return [];
+    return users.filter(u => conversationUsers.includes(u.id));
+  }, [users, conversationUsers]);
+
+  // If no chat selected, show list
   if (!match || !selectedUser) {
     if (authLoading || usersLoading) {
       return (
@@ -210,31 +239,6 @@ export default function Chat() {
     if (!currentUser) {
       return null;
     }
-
-    // ✅ FIX 2: Sadece mesajlaşılan kullanıcıları göster
-    const [conversationUsers, setConversationUsers] = useState<string[]>([]);
-
-    useEffect(() => {
-      if (!currentUser) return;
-      
-      const token = localStorage.getItem('auth_token');
-      fetch(`/api/messages?token=${token}&receiverId=ALL`)
-        .then(res => res.json())
-        .then((allMessages: Message[]) => {
-          const uniqueUserIds = new Set<string>();
-          allMessages.forEach((msg) => {
-            if (msg.senderId === currentUser.id) {
-              uniqueUserIds.add(msg.receiverId);
-            } else if (msg.receiverId === currentUser.id) {
-              uniqueUserIds.add(msg.senderId);
-            }
-          });
-          setConversationUsers(Array.from(uniqueUserIds));
-        })
-        .catch(console.error);
-    }, [currentUser]);
-
-    const displayUsers = users?.filter(u => conversationUsers.includes(u.id)) || [];
 
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto pt-8">

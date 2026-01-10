@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Mail, Lock, User, Loader2 } from "lucide-react";
@@ -10,8 +10,16 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login, register } = useAuth();
+  const { login, register, user } = useAuth();
   const [, setLocation] = useLocation();
+
+  // ✅ FIX 3: User değiştiğinde otomatik redirect
+  useEffect(() => {
+    if (user && !isLoading) {
+      console.log("User logged in, redirecting to /");
+      setLocation("/");
+    }
+  }, [user, isLoading, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,30 +27,20 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        // Giriş İşlemi
-        const result = await login(email, password);
-        if (result && result.success) {
-          setLocation("/");
-        }
+        // ✅ FIX 3: Login işlemi - useEffect redirect yapacak
+        await login(email, password);
       } else {
-        // Kayıt İşlemi
+        // ✅ FIX 3: Kayıt İşlemi - useEffect redirect yapacak
         if (!username.trim()) {
           alert("Kullanıcı adı gereklidir");
           setIsLoading(false);
           return;
         }
         
-        const result = await register(username, email, password);
-        
-        // Eğer kayıt başarılıysa (use-auth içinden success:true dönerse)
-        if (result && result.success) {
-          console.log("Kayıt başarılı, ana sayfaya yönlendiriliyor...");
-          setLocation("/");
-        }
+        await register(username, email, password);
       }
     } catch (err) {
       console.error("Beklenmedik bir hata oluştu:", err);
-    } finally {
       setIsLoading(false);
     }
   };
