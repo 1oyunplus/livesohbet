@@ -162,6 +162,22 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+// storage.ts içine ekle:
+
+async getAllMessages(userId: string): Promise<Message[]> {
+  try {
+    return await db.select().from(messages).where(
+      or(
+        eq(messages.senderId, userId),
+        eq(messages.receiverId, userId)
+      )
+    );
+  } catch (error) {
+    console.error("Error getting all messages:", error);
+    throw error;
+  }
+}
+
   async getMessageCount(senderId: string, receiverId: string) {
     // TODO: Implement proper message counting with a separate table
     return { senderId, receiverId, freeMessagesSent: 0, paidMessagesSent: 0 };

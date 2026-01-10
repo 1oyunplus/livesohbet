@@ -1,10 +1,11 @@
 import { useRoute } from "wouter";
 import { useState, useEffect, useRef } from "react";
 import { Send, ArrowLeft, MoreVertical, Phone, Video, Trash2, Ban } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useUsers, useChatMessages } from "@/hooks/use-users";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Chat() {
   const [match, params] = useRoute("/chat/:id");
@@ -22,6 +23,35 @@ export default function Chat() {
   const [showMenu, setShowMenu] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 🔥 YENİ: Mesajlaşılan kullanıcıları getir
+  const { data: conversationUsers } = useQuery({
+    queryKey: ['conversation-users', currentUser?.id],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return [];
+
+      const res = await fetch(`/api/messages?token=${token}&receiverId=ALL`);
+      if (!res.ok) return [];
+      
+      const allMessages = await res.json();
+      
+      // Benzersiz kullanıcı ID'lerini bul
+      const userIds = new Set<string>();
+      allMessages.forEach((msg: any) => {
+        if (msg.senderId === currentUser?.id) {
+          userIds.add(msg.receiverId);
+        } else if (msg.receiverId === currentUser?.id) {
+          userIds.add(msg.senderId);
+        }
+      });
+
+      // Users listesinden sadece mesajlaşılanları filtrele
+      return users?.filter(u => userIds.has(u.id)) || [];
+    },
+    enabled: !!currentUser && !match,
+    refetchInterval: 5000,
+  });
 
   // Mesaj sayısını getir
   useEffect(() => {
@@ -66,7 +96,6 @@ export default function Chat() {
       }
     };
 
-    // Listen for custom WebSocket events
     window.addEventListener('websocket-message', handleWebSocketMessage as EventListener);
     return () => window.removeEventListener('websocket-message', handleWebSocketMessage as EventListener);
   }, [params?.id, currentUser?.id, refetchMessages]);
@@ -204,12 +233,15 @@ export default function Chat() {
       return null;
     }
 
+    // 🔥 DÜZELTİLDİ: Sadece mesajlaşılan kullanıcıları göster
+    const displayUsers = conversationUsers || [];
+
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto pt-8">
         <h1 className="text-4xl font-display font-bold text-white mb-8">Mesajlar</h1>
         <div className="glass-panel rounded-3xl overflow-hidden min-h-[500px]">
-          {users && users.length > 0 ? (
-            users.map(user => (
+          {displayUsers && displayUsers.length > 0 ? (
+            displayUsers.map(user => (
               <Link key={user.id} href={`/chat/${user.id}`} className="flex items-center gap-4 p-4 hover:bg-white/5 border-b border-white/5 transition-colors cursor-pointer">
                 <div className="relative">
                   <img src={user.photoUrl || ""} alt={user.username} className="w-12 h-12 rounded-full object-cover" />
@@ -217,7 +249,7 @@ export default function Chat() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-white font-semibold truncate">{user.username}</h3>
-                  <p className="text-white/50 text-sm truncate">Sohbete başlamak için tıklayın...</p>
+                  <p className="text-white/50 text-sm truncate">Sohbete devam et...</p>
                 </div>
                 <span className="text-white/30 text-xs">
                   {user.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
@@ -226,7 +258,8 @@ export default function Chat() {
             ))
           ) : (
             <div className="p-8 text-center text-white/60">
-              <p>Kullanıcı bulunamadı. Hesap oluşturarak veya giriş yaparak başlayın!</p>
+              <p>Henüz mesajlaşma geçmişiniz yok.</p>
+              <p className="text-sm mt-2">Keşfet sayfasından yeni insanlarla tanışın!</p>
             </div>
           )}
         </div>
