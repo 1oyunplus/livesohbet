@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useUsers, useChatMessages } from "@/hooks/use-users";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
 
 export default function Chat() {
   const [match, params] = useRoute("/chat/:id");
@@ -23,35 +22,6 @@ export default function Chat() {
   const [showMenu, setShowMenu] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // 🔥 YENİ: Mesajlaşılan kullanıcıları getir
-  const { data: conversationUsers } = useQuery({
-    queryKey: ['conversation-users', currentUser?.id],
-    queryFn: async () => {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return [];
-
-      const res = await fetch(`/api/messages?token=${token}&receiverId=ALL`);
-      if (!res.ok) return [];
-      
-      const allMessages = await res.json();
-      
-      // Benzersiz kullanıcı ID'lerini bul
-      const userIds = new Set<string>();
-      allMessages.forEach((msg: any) => {
-        if (msg.senderId === currentUser?.id) {
-          userIds.add(msg.receiverId);
-        } else if (msg.receiverId === currentUser?.id) {
-          userIds.add(msg.senderId);
-        }
-      });
-
-      // Users listesinden sadece mesajlaşılanları filtrele
-      return users?.filter(u => userIds.has(u.id)) || [];
-    },
-    enabled: !!currentUser && !match,
-    refetchInterval: 5000,
-  });
 
   // Mesaj sayısını getir
   useEffect(() => {
@@ -84,7 +54,6 @@ export default function Chat() {
       try {
         const data = event.detail;
         if (data.type === 'new_message' && data.message) {
-          // Check if message is for current chat
           const msg = data.message;
           if ((msg.senderId === params?.id && msg.receiverId === currentUser?.id) ||
               (msg.receiverId === params?.id && msg.senderId === currentUser?.id)) {
@@ -134,7 +103,6 @@ export default function Chat() {
         return;
       }
 
-      // Refresh messages and count
       await refetchMessages();
       const countRes = await fetch(`/api/messages/count?token=${token}&receiverId=${selectedUser.id}`);
       if (countRes.ok) {
@@ -233,8 +201,8 @@ export default function Chat() {
       return null;
     }
 
-    // 🔥 DÜZELTİLDİ: Sadece mesajlaşılan kullanıcıları göster
-    const displayUsers = conversationUsers || [];
+    // 🔥 BASİTLEŞTİRİLDİ: Tüm kullanıcıları göster (filtreleme yok)
+    const displayUsers = users || [];
 
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto pt-8">
@@ -249,7 +217,7 @@ export default function Chat() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-white font-semibold truncate">{user.username}</h3>
-                  <p className="text-white/50 text-sm truncate">Sohbete devam et...</p>
+                  <p className="text-white/50 text-sm truncate">Sohbete başlamak için tıklayın...</p>
                 </div>
                 <span className="text-white/30 text-xs">
                   {user.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
@@ -258,8 +226,7 @@ export default function Chat() {
             ))
           ) : (
             <div className="p-8 text-center text-white/60">
-              <p>Henüz mesajlaşma geçmişiniz yok.</p>
-              <p className="text-sm mt-2">Keşfet sayfasından yeni insanlarla tanışın!</p>
+              <p>Kullanıcı bulunamadı. Keşfet sayfasından insanlar bulun!</p>
             </div>
           )}
         </div>
