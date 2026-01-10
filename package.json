@@ -12,6 +12,7 @@
     "db:studio": "drizzle-kit studio",
     "railway:build": "npm install && npm run build && npm run db:push",
     "railway:start": "npm start"
+	"railway:build": "rm -rf node_modules package-lock.json && npm install && npm run build && npm run db:push"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
