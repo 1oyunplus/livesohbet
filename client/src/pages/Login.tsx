@@ -13,13 +13,14 @@ export default function Login() {
   const { login, register, user } = useAuth();
   const [, setLocation] = useLocation();
 
-  // ✅ FIX 3: User değiştiğinde otomatik redirect
+  // ✅ FIX: User değiştiğinde otomatik redirect
   useEffect(() => {
     if (user && !isLoading) {
       console.log("User logged in, redirecting to /");
-      setLocation("/");
+      // Force navigation with reload
+      window.location.href = "/";
     }
-  }, [user, isLoading, setLocation]);
+  }, [user, isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

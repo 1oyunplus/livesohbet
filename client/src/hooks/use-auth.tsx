@@ -94,7 +94,6 @@ export function useAuth() {
     setWs(websocket);
   };
 
-  // ✅ FIX 4: Login fonksiyonunu async/await ile düzgün yönet
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -111,11 +110,9 @@ export function useAuth() {
 
       const data = await res.json();
       
-      // ✅ FIX 4: State'i ÖNCE güncelle
       setUser(data.user);
       localStorage.setItem('auth_token', data.token);
       
-      // ✅ FIX 4: WebSocket'i asenkron başlat (hata olsa bile bloklamaz)
       try {
         connectWebSocket(data.token);
       } catch (wsError) {
@@ -127,7 +124,9 @@ export function useAuth() {
         description: `${data.user.username} olarak başarıyla giriş yapıldı`,
       });
       
-      // ✅ FIX 4: Tüm işlemler tamamlanana kadar bekle
+      // State'i garanti etmek için küçük bir bekleme
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       return { success: true };
     } catch (error: any) {
       toast({
@@ -141,7 +140,6 @@ export function useAuth() {
     }
   };
 
-  // ✅ FIX 4: Register fonksiyonunu async/await ile düzgün yönet
   const register = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -158,13 +156,11 @@ export function useAuth() {
 
       const data = await res.json();
       
-      // ✅ FIX 4: State'i ÖNCE güncelle
       setUser(data.user);
       
       if (data.token) {
         localStorage.setItem('auth_token', data.token);
         
-        // ✅ FIX 4: WebSocket'i asenkron başlat (hata olsa bile bloklamaz)
         try {
           connectWebSocket(data.token);
         } catch (wsError) {
@@ -177,7 +173,9 @@ export function useAuth() {
         description: `Hesap başarıyla oluşturuldu!`,
       });
       
-      // ✅ FIX 4: Tüm işlemler tamamlanana kadar bekle
+      // State'i garanti etmek için küçük bir bekleme
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       return { success: true };
     } catch (error: any) {
       console.error("Kayıt sırasında hata:", error);
