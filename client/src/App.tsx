@@ -35,15 +35,12 @@ function Router() {
           {user ? <Redirect to="/" /> : <Login />}
         </Route>
         
-        {/* ✅ FIX 3: /profile/edit rotasını /profile'dan ÖNCE koy */}
+        {/* ✅ FIX: /profile/edit rotasını /profile'dan ÖNCE koy */}
         <Route path="/profile/edit">
           {!user ? (
             <Redirect to="/login" />
           ) : (
-            <>
-              <EditProfile />
-              <Navigation />
-            </>
+            <EditProfile />
           )}
         </Route>
 
