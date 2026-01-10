@@ -90,7 +90,7 @@ export function UserCard({ user, index }: UserCardProps) {
             className="w-full py-3 rounded-xl bg-primary text-white font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-primary/40 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
           >
             <MessageCircle className="w-4 h-4" />
-            Say Hello
+            Mesaj yaz
           </button>
         </div>
       </div>
