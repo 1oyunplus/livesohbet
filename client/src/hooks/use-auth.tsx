@@ -47,7 +47,7 @@ export function useAuth() {
   };
 
   const connectWebSocket = (token: string) => {
-    const protocol = window.location.protocol === 'https:' : 'wss:' : 'ws:';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
     const websocket = new WebSocket(wsUrl);
 
