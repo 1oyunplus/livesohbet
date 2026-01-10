@@ -103,10 +103,9 @@ export default function EditProfile() {
     try {
       const token = localStorage.getItem('auth_token');
       
-      // Önce fotoğrafı yükle
       let photoUrl = formData.photoUrl;
       if (photoFile) {
-        photoUrl = await uploadPhoto();
+        photoUrl = await uploadPhoto() || formData.photoUrl;
       }
 
       const res = await fetch('/api/users/profile', {
@@ -116,25 +115,28 @@ export default function EditProfile() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          ...formData,
+          username: formData.username,
           photoUrl,
           age: formData.age ? parseInt(formData.age) : null,
+          gender: formData.gender || null,
+          birthDate: formData.birthDate || null,
+          bio: formData.bio || null,
+          hobbies: formData.hobbies,
           token
         }),
       });
 
       if (!res.ok) {
-        throw new Error('Profil güncellenemedi');
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Profil güncellenemedi');
       }
 
-      // Kullanıcı bilgilerini güncelle (logout olmaması için)
-      const data = await res.json();
-      await refreshUser(); // Kullanıcı bilgilerini yenile
+      await refreshUser();
       
       setLocation("/profile");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      alert('Profil güncellenirken bir hata oluştu');
+      alert(error.message || 'Profil güncellenirken bir hata oluştu');
     } finally {
       setIsSaving(false);
     }
@@ -157,7 +159,6 @@ export default function EditProfile() {
     });
   };
 
-
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -173,7 +174,6 @@ export default function EditProfile() {
   return (
     <div className="pb-24 pt-8 px-4 md:px-8 max-w-3xl mx-auto">
       <div className="glass-panel rounded-3xl p-6 md:p-10">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/profile" className="p-2 hover:bg-white/10 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5 text-white" />
@@ -182,7 +182,6 @@ export default function EditProfile() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Profil Fotoğrafı */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white/80">Profil Fotoğrafı</label>
             <div className="flex items-center gap-4">
@@ -210,7 +209,6 @@ export default function EditProfile() {
             <p className="text-xs text-white/50">Maksimum dosya boyutu: 5MB</p>
           </div>
 
-          {/* Kullanıcı Adı */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white/80">Kullanıcı Adı</label>
             <input
@@ -222,7 +220,6 @@ export default function EditProfile() {
             />
           </div>
 
-          {/* Yaş */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white/80">Yaş</label>
             <input
@@ -235,7 +232,6 @@ export default function EditProfile() {
             />
           </div>
 
-          {/* Cinsiyet */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white/80">Cinsiyet</label>
             <select
@@ -250,7 +246,6 @@ export default function EditProfile() {
             </select>
           </div>
 
-          {/* Doğum Tarihi */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white/80">Doğum Tarihi</label>
             <input
@@ -261,7 +256,6 @@ export default function EditProfile() {
             />
           </div>
 
-          {/* Hakkımda */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white/80">Hakkımda</label>
             <textarea
@@ -273,7 +267,6 @@ export default function EditProfile() {
             />
           </div>
 
-          {/* Hobiler */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white/80">Hobiler</label>
             <div className="flex gap-2 mb-2">
@@ -312,7 +305,6 @@ export default function EditProfile() {
             </div>
           </div>
 
-          {/* Butonlar */}
           <div className="flex gap-3 pt-4">
             <Link
               href="/profile"
