@@ -247,6 +247,70 @@ app.get("/api/messages", async (req, res) => {
       res.status(500).json({ error: error.message || "Mesaj gönderilemedi" });
     }
   });
+  
+  // routes.ts içine EKLE (diğer route'ların yanına)
+
+// --- PROFİL GÜNCELLEME ---
+app.put("/api/users/profile", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
+    
+    if (!token) {
+      return res.status(401).json({ error: "Token gerekli" });
+    }
+
+    const user = await storage.getUser(token);
+    
+    if (!user) {
+      return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+    }
+
+    const { username, photoUrl, age, gender, birthDate, bio, hobbies, location } = req.body;
+
+    const updates: any = {};
+    if (username !== undefined) updates.username = username;
+    if (photoUrl !== undefined) updates.photoUrl = photoUrl;
+    if (age !== undefined) updates.age = age;
+    if (gender !== undefined) updates.gender = gender;
+    if (birthDate !== undefined) updates.birthDate = birthDate ? new Date(birthDate) : null;
+    if (bio !== undefined) updates.bio = bio;
+    if (hobbies !== undefined) updates.hobbies = hobbies;
+    if (location !== undefined) updates.location = location;
+
+    const updatedUser = await storage.updateUser(token, updates);
+
+    console.log(`✅ Profile updated: ${updatedUser.username}`);
+    res.json({ user: updatedUser });
+  } catch (error: any) {
+    console.error("❌ Profile Update Error:", error);
+    res.status(500).json({ error: error.message || "Profil güncellenemedi" });
+  }
+});
+
+// --- FOTOĞRAF YÜKLEME (Opsiyonel, base64 için) ---
+app.post("/api/users/upload-photo", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
+    
+    if (!token) {
+      return res.status(401).json({ error: "Token gerekli" });
+    }
+
+    const { photoBase64 } = req.body;
+
+    if (!photoBase64) {
+      return res.status(400).json({ error: "Fotoğraf verisi eksik" });
+    }
+
+    // Base64'ü olduğu gibi kaydet (veya cloud storage'a yükle)
+    const photoUrl = photoBase64;
+
+    res.json({ photoUrl });
+  } catch (error: any) {
+    console.error("❌ Photo Upload Error:", error);
+    res.status(500).json({ error: error.message || "Fotoğraf yüklenemedi" });
+  }
+});
 
   // --- WEBSOCKET KURULUMU ---
   // Railway production ortamında WebSocket desteği
