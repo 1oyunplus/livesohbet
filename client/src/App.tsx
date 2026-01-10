@@ -35,6 +35,29 @@ function Router() {
           {user ? <Redirect to="/" /> : <Login />}
         </Route>
         
+        {/* ✅ FIX 3: /profile/edit rotasını /profile'dan ÖNCE koy */}
+        <Route path="/profile/edit">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <EditProfile />
+              <Navigation />
+            </>
+          )}
+        </Route>
+
+        <Route path="/profile">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <Profile />
+              <Navigation />
+            </>
+          )}
+        </Route>
+        
         {/* Korunan rotalar */}
         <Route path="/">
           {!user ? (
@@ -47,6 +70,17 @@ function Router() {
           )}
         </Route>
         
+        <Route path="/chat/:id">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <Chat />
+              <Navigation />
+            </>
+          )}
+        </Route>
+
         <Route path="/chat">
           {!user ? (
             <Redirect to="/login" />
@@ -64,28 +98,6 @@ function Router() {
           ) : (
             <>
               <Store />
-              <Navigation />
-            </>
-          )}
-        </Route>
-        
-        <Route path="/profile">
-          {!user ? (
-            <Redirect to="/login" />
-          ) : (
-            <>
-              <Profile />
-              <Navigation />
-            </>
-          )}
-        </Route>
-
-        <Route path="/profile/edit">
-          {!user ? (
-            <Redirect to="/login" />
-          ) : (
-            <>
-              <EditProfile />
               <Navigation />
             </>
           )}
