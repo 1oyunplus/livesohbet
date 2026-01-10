@@ -1,0 +1,9 @@
+[phases.setup]
+nixPkgs = ["nodejs-20_x"]
+```
+
+**VEYA daha basit:**
+
+Proje kök dizininde **`.nvmrc`** dosyası oluştur:
+```
+20
