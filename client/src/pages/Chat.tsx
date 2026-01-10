@@ -5,14 +5,16 @@ import { motion } from "framer-motion";
 import { useUsers, useChatMessages } from "@/hooks/use-users";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import type { Message } from "@shared/schema";
 
 export default function Chat() {
   const [match, params] = useRoute("/chat/:id");
-  const { data: users } = useUsers();
+  const { data: users, isLoading: usersLoading } = useUsers();
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   
-  const selectedUser = params?.id ? users?.find(u => u.id === params.id) : null;
+  // ✅ FIX 1: Kullanıcı verisi yüklenene kadar bekle
+  const selectedUser = params?.id && users ? users.find(u => u.id === params.id) : null;
   const { data: messagesData, refetch: refetchMessages } = useChatMessages(params?.id || "");
   
   const [message, setMessage] = useState("");
@@ -40,6 +42,14 @@ export default function Chat() {
       setLocation("/login");
     }
   }, [authLoading, currentUser, setLocation]);
+
+  // ✅ FIX 1: Kullanıcı bulunamadıysa ve veriler yüklendiyse Discover'a yönlendir
+  useEffect(() => {
+    if (match && params?.id && !usersLoading && users && !selectedUser) {
+      console.warn(`Kullanıcı bulunamadı: ${params.id}`);
+      setLocation("/");
+    }
+  }, [match, params?.id, usersLoading, users, selectedUser, setLocation]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -187,9 +197,9 @@ export default function Chat() {
 
   const messages = messagesData || [];
 
-  // If no chat selected, show list
+  // ✅ FIX 2: Mesajlaşılan kullanıcıları filtrele
   if (!match || !selectedUser) {
-    if (authLoading) {
+    if (authLoading || usersLoading) {
       return (
         <div className="p-4 md:p-8 max-w-4xl mx-auto pt-8">
           <div className="text-white">Yükleniyor...</div>
@@ -201,14 +211,36 @@ export default function Chat() {
       return null;
     }
 
-    // 🔥 BASİTLEŞTİRİLDİ: Tüm kullanıcıları göster (filtreleme yok)
-    const displayUsers = users || [];
+    // ✅ FIX 2: Sadece mesajlaşılan kullanıcıları göster
+    const [conversationUsers, setConversationUsers] = useState<string[]>([]);
+
+    useEffect(() => {
+      if (!currentUser) return;
+      
+      const token = localStorage.getItem('auth_token');
+      fetch(`/api/messages?token=${token}&receiverId=ALL`)
+        .then(res => res.json())
+        .then((allMessages: Message[]) => {
+          const uniqueUserIds = new Set<string>();
+          allMessages.forEach((msg) => {
+            if (msg.senderId === currentUser.id) {
+              uniqueUserIds.add(msg.receiverId);
+            } else if (msg.receiverId === currentUser.id) {
+              uniqueUserIds.add(msg.senderId);
+            }
+          });
+          setConversationUsers(Array.from(uniqueUserIds));
+        })
+        .catch(console.error);
+    }, [currentUser]);
+
+    const displayUsers = users?.filter(u => conversationUsers.includes(u.id)) || [];
 
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto pt-8">
         <h1 className="text-4xl font-display font-bold text-white mb-8">Mesajlar</h1>
         <div className="glass-panel rounded-3xl overflow-hidden min-h-[500px]">
-          {displayUsers && displayUsers.length > 0 ? (
+          {displayUsers.length > 0 ? (
             displayUsers.map(user => (
               <Link key={user.id} href={`/chat/${user.id}`} className="flex items-center gap-4 p-4 hover:bg-white/5 border-b border-white/5 transition-colors cursor-pointer">
                 <div className="relative">
@@ -217,7 +249,7 @@ export default function Chat() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-white font-semibold truncate">{user.username}</h3>
-                  <p className="text-white/50 text-sm truncate">Sohbete başlamak için tıklayın...</p>
+                  <p className="text-white/50 text-sm truncate">Mesajları görüntüle</p>
                 </div>
                 <span className="text-white/30 text-xs">
                   {user.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
@@ -226,7 +258,7 @@ export default function Chat() {
             ))
           ) : (
             <div className="p-8 text-center text-white/60">
-              <p>Kullanıcı bulunamadı. Keşfet sayfasından insanlar bulun!</p>
+              <p>Henüz mesajlaşma yok. Keşfet sayfasından insanlar bulun!</p>
             </div>
           )}
         </div>
