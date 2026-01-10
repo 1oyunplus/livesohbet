@@ -4,7 +4,7 @@ import { Search, Filter, Compass, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 export default function Discover() {
   const { data: users, isLoading } = useUsers();
@@ -18,7 +18,6 @@ export default function Discover() {
     }
   }, [authLoading, user, setLocation]);
 
-  // Sayfa yüklendiğinde konum al
   useEffect(() => {
     if (user && !user.location) {
       getLocation();
@@ -50,7 +49,6 @@ export default function Discover() {
             });
 
             if (res.ok) {
-              // Sayfayı yenile
               window.location.reload();
             }
           } catch (error) {
@@ -67,6 +65,11 @@ export default function Discover() {
     }
   };
 
+  const onlineUsers = useMemo(() => {
+    if (!users) return [];
+    return users.filter(u => u.isOnline);
+  }, [users]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -77,7 +80,6 @@ export default function Discover() {
 
   return (
     <div className="pb-24 pt-8 px-4 md:px-8 max-w-7xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
           <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-2">
@@ -111,10 +113,9 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* Grid */}
-      {users && users.length > 0 ? (
+      {onlineUsers && onlineUsers.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {users.map((user, idx) => (
+          {onlineUsers.map((user, idx) => (
             <UserCard key={user.id} user={user} index={idx} />
           ))}
         </div>
@@ -123,9 +124,9 @@ export default function Discover() {
           <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4">
             <Compass className="w-10 h-10 text-white/30" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">Kullanıcı bulunamadı</h3>
+          <h3 className="text-xl font-bold text-white mb-2">Çevrimiçi kullanıcı bulunamadı</h3>
           <p className="text-white/50 max-w-md">
-            Filtrelerinizi ayarlayarak veya arama yarıçapınızı genişleterek daha fazla insan bulabilirsiniz.
+            Şu anda çevrimiçi olan kimse yok. Daha sonra tekrar deneyin!
           </p>
         </div>
       )}
