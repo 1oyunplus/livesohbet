@@ -9,11 +9,11 @@ export default function Store() {
 
   const diamondPackages = [
     { amount: 100, price: 25, bonus: 0 },
-	{ amount: 225, price: 50, bonus: 25 },standart: true },
+	{ amount: 225, price: 50, bonus: 25 },
     { amount: 350, price: 75, bonus: 50 },
 	{ amount: 475, price: 100, bonus: 75 },
 	{ amount: 600, price: 125, bonus: 100 },popular: true },
-    { amount: 1200, price: 250, bonus: 200, popular: true },
+    { amount: 1200, price: 250, bonus: 200,
     { amount: 2400, price: 500, bonus: 400 },
   ];
 
