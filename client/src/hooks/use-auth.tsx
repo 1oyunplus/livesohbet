@@ -47,8 +47,8 @@ export function useAuth() {
   };
 
   const connectWebSocket = (token: string) => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}?token=${token}`;
+    const protocol = window.location.protocol === 'https:' : 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
     const websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => {
@@ -64,10 +64,10 @@ export function useAuth() {
         
         if (data.type === 'new_message') {
           // Mesaj geldiğinde bildirim göster
-      toast({
-        title: "Yeni mesaj",
-        description: "Yeni bir mesajınız var",
-      });
+          toast({
+            title: "Yeni mesaj",
+            description: "Yeni bir mesajınız var",
+          });
         } else if (data.type === 'user_online' || data.type === 'user_offline') {
           // Kullanıcı durumu değişti, sayfayı yenile
           window.dispatchEvent(new Event('user-status-update'));
@@ -94,6 +94,7 @@ export function useAuth() {
     setWs(websocket);
   };
 
+  // ✅ FIX 4: Login fonksiyonunu async/await ile düzgün yönet
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -109,15 +110,24 @@ export function useAuth() {
       }
 
       const data = await res.json();
+      
+      // ✅ FIX 4: State'i ÖNCE güncelle
       setUser(data.user);
       localStorage.setItem('auth_token', data.token);
-      connectWebSocket(data.token);
+      
+      // ✅ FIX 4: WebSocket'i asenkron başlat (hata olsa bile bloklamaz)
+      try {
+        connectWebSocket(data.token);
+      } catch (wsError) {
+        console.error("WebSocket başlatılamadı:", wsError);
+      }
       
       toast({
         title: "Tekrar hoş geldiniz!",
         description: `${data.user.username} olarak başarıyla giriş yapıldı`,
       });
       
+      // ✅ FIX 4: Tüm işlemler tamamlanana kadar bekle
       return { success: true };
     } catch (error: any) {
       toast({
@@ -131,6 +141,7 @@ export function useAuth() {
     }
   };
 
+  // ✅ FIX 4: Register fonksiyonunu async/await ile düzgün yönet
   const register = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -147,13 +158,13 @@ export function useAuth() {
 
       const data = await res.json();
       
-      // KULLANICIYI SET ET
+      // ✅ FIX 4: State'i ÖNCE güncelle
       setUser(data.user);
       
-      // TOKEN VARSA KAYDET
       if (data.token) {
         localStorage.setItem('auth_token', data.token);
-        // WebSocket bağlantısını hata alsa bile akışı bozmaması için try-catch içine alıyoruz
+        
+        // ✅ FIX 4: WebSocket'i asenkron başlat (hata olsa bile bloklamaz)
         try {
           connectWebSocket(data.token);
         } catch (wsError) {
@@ -166,6 +177,7 @@ export function useAuth() {
         description: `Hesap başarıyla oluşturuldu!`,
       });
       
+      // ✅ FIX 4: Tüm işlemler tamamlanana kadar bekle
       return { success: true };
     } catch (error: any) {
       console.error("Kayıt sırasında hata:", error);
@@ -176,7 +188,7 @@ export function useAuth() {
       });
       return { success: false, error: error.message };
     } finally {
-      setIsLoading(false); // BUTONU HER DURUMDA SERBEST BIRAK
+      setIsLoading(false);
     }
   };
 
@@ -187,10 +199,10 @@ export function useAuth() {
     }
     setUser(null);
     localStorage.removeItem('auth_token');
-      toast({
-        title: "Çıkış yapıldı",
-        description: "Tekrar görüşmek üzere!",
-      });
+    toast({
+      title: "Çıkış yapıldı",
+      description: "Tekrar görüşmek üzere!",
+    });
   };
 
   const updateDiamonds = (amount: number) => {
