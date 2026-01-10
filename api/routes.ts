@@ -173,22 +173,33 @@ export async function registerRoutes(
   });
 
   // --- MESAJLARI GETİR ---
-  app.get("/api/messages/:userId", async (req, res) => {
-    try {
-      const token = req.headers.authorization?.replace("Bearer ", "");
-      const { userId } = req.params;
-      
-      if (!token) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const messages = await storage.getMessages(token, userId);
-      res.json(messages);
-    } catch (error: any) {
-      console.error("❌ Get Messages Error:", error);
-      res.status(500).json({ error: error.message || "Mesajlar getirilemedi" });
+app.get("/api/messages", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
+    const receiverId = req.query.receiverId as string;
+    
+    if (!token) {
+      return res.status(400).json({ error: "Token gerekli" });
     }
-  });
+
+    // 🔥 YENİ: Eğer receiverId "ALL" ise, tüm mesajları getir
+    if (receiverId === "ALL") {
+      const allMessages = await storage.getAllMessages(token);
+      return res.json(allMessages);
+    }
+
+    // Belirli bir kullanıcı için mesajları getir
+    if (!receiverId) {
+      return res.status(400).json({ error: "receiverId gerekli" });
+    }
+
+    const messages = await storage.getMessages(token, receiverId);
+    res.json(messages);
+  } catch (error: any) {
+    console.error("❌ Get Messages Error:", error);
+    res.status(500).json({ error: error.message || "Mesajlar getirilemedi" });
+  }
+});
 
   // --- MESAJ GÖNDER ---
   app.post("/api/messages", async (req, res) => {
