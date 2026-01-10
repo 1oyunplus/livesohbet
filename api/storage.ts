@@ -5,6 +5,7 @@ import { eq, and, or } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>; // 🔥 YENİ
   getAllUsers(excludeId?: string, sortByLocation?: { lat: number; lng: number }): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
@@ -36,6 +37,17 @@ export class DatabaseStorage implements IStorage {
       return user;
     } catch (error) {
       console.error("Error getting user by email:", error);
+      throw error;
+    }
+  }
+
+  // 🔥 YENİ: Google ID ile kullanıcı bul
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+      return user;
+    } catch (error) {
+      console.error("Error getting user by Google ID:", error);
       throw error;
     }
   }
@@ -86,25 +98,24 @@ export class DatabaseStorage implements IStorage {
       
       const [user] = await db.insert(users).values({
         id,
-        username: insertUser.username.trim(),
+        username: insertUser.username?.trim() || null, // 🔥 nullable
         email: normalizedEmail,
-        password: insertUser.password, // ÖNEMLİ: Şifre kaydediliyor
+        password: insertUser.password || null, // 🔥 nullable
+        googleId: insertUser.googleId || null, // 🔥 YENİ
         photoUrl: insertUser.photoUrl,
         bio: insertUser.bio || null,
-        interests: insertUser.interests || null,
+        hobbies: insertUser.hobbies || null,
         location: insertUser.location || null,
         diamonds: insertUser.diamonds !== undefined ? insertUser.diamonds : 10,
         vipStatus: insertUser.vipStatus || 'none',
         vipExpiry: insertUser.vipExpiry || null,
         isOnline: insertUser.isOnline !== undefined ? insertUser.isOnline : true,
         lastActive: new Date(),
-        blockedUsers: insertUser.blockedUsers || null
+        blockedUsers: insertUser.blockedUsers || null,
+        age: insertUser.age || null,
+        gender: insertUser.gender || null,
+        birthDate: insertUser.birthDate || null,
       }).returning();
-      
-      // Şifre alanının kaydedildiğini doğrula
-      if (!user.password) {
-        console.error("⚠️  Warning: User created but password field is empty!");
-      }
       
       return user;
     } catch (error) {
@@ -162,21 +173,19 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-// storage.ts içine ekle:
-
-async getAllMessages(userId: string): Promise<Message[]> {
-  try {
-    return await db.select().from(messages).where(
-      or(
-        eq(messages.senderId, userId),
-        eq(messages.receiverId, userId)
-      )
-    );
-  } catch (error) {
-    console.error("Error getting all messages:", error);
-    throw error;
+  async getAllMessages(userId: string): Promise<Message[]> {
+    try {
+      return await db.select().from(messages).where(
+        or(
+          eq(messages.senderId, userId),
+          eq(messages.receiverId, userId)
+        )
+      );
+    } catch (error) {
+      console.error("Error getting all messages:", error);
+      throw error;
+    }
   }
-}
 
   async getMessageCount(senderId: string, receiverId: string) {
     // TODO: Implement proper message counting with a separate table

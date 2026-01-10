@@ -4,11 +4,12 @@ import { z } from "zod";
 
 // We use these table definitions to derive types, even if using Firebase
 export const users = pgTable("users", {
-  id: text("id").primaryKey(), // Firebase UID
-  username: text("username").notNull(),
+  id: text("id").primaryKey(), // Firebase UID veya Google ID
+  username: text("username"), // 🔥 nullable yaptık - profilde doldurulacak
   email: text("email").notNull(),
-  password: text("password").notNull(), // 🔥 YENİ EKLEME
+  password: text("password"), // 🔥 nullable yaptık - Google kullanıcıları için null
   photoUrl: text("photo_url"),
+  googleId: text("google_id").unique(), // 🔥 YENİ: Google OAuth ID
   isOnline: boolean("is_online").default(false),
   diamonds: integer("diamonds").default(10),
   vipStatus: text("vip_status").default("none"), // none, bronze, silver, gold

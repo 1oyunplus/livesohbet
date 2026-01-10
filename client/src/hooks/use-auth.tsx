@@ -9,22 +9,47 @@ export function useAuth() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for existing token
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      fetchUser(token);
+    // 🔥 Google OAuth callback'ten gelen token'ı kontrol et
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    const isNewUser = urlParams.get('newUser') === 'true';
+
+    if (tokenFromUrl) {
+      // Token'ı kaydet
+      localStorage.setItem('auth_token', tokenFromUrl);
+      
+      // URL'den parametreleri temizle
+      window.history.replaceState({}, document.title, '/');
+      
+      // Kullanıcı bilgilerini çek
+      fetchUser(tokenFromUrl, isNewUser);
     } else {
-      setIsLoading(false);
+      // Check for existing token
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        fetchUser(token);
+      } else {
+        setIsLoading(false);
+      }
     }
   }, []);
 
-  const fetchUser = async (token: string) => {
+  const fetchUser = async (token: string, isNewUser?: boolean) => {
     try {
       const res = await fetch(`/api/auth/me?token=${token}`);
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
         connectWebSocket(token);
+
+        // 🔥 Yeni Google kullanıcısı ise profil tamamlama bildirimi göster
+        if (isNewUser) {
+          toast({
+            title: "Hoş geldiniz!",
+            description: "Lütfen profilinizi tamamlayın ve kendinize bir kullanıcı adı seçin.",
+            duration: 5000,
+          });
+        }
       } else {
         localStorage.removeItem('auth_token');
         setUser(null);

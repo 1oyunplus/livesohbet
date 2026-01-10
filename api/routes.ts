@@ -3,12 +3,73 @@ import { type Server } from "http";
 import { storage } from "./storage.js";
 import { WebSocketServer } from "ws";
 import type { WebSocket } from "ws";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+
+// 🔥 GOOGLE OAUTH YAPILANDIRMASI
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback",
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const email = profile.emails?.[0]?.value;
+        const googleId = profile.id;
+        const photoUrl = profile.photos?.[0]?.value;
+        const displayName = profile.displayName;
+
+        if (!email || !googleId) {
+          return done(new Error("Google profil bilgileri eksik"), undefined);
+        }
+
+        // Kullanıcıyı Google ID ile bul
+        let user = await storage.getUserByGoogleId(googleId);
+
+        if (!user) {
+          // Yeni kullanıcı oluştur
+          user = await storage.createUser({
+            username: null, // ❗ Profilde doldurulacak
+            email: email.toLowerCase(),
+            password: null, // Google kullanıcıları şifresiz
+            googleId: googleId,
+            photoUrl: photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`,
+            diamonds: 10,
+            vipStatus: "none",
+            isOnline: true,
+            location: { lat: 40.7128, lng: -74.006 },
+          });
+
+          console.log(`✅ New Google user created: ${email}`);
+        } else {
+          // Mevcut kullanıcıyı online yap
+          user = await storage.updateUser(user.id, {
+            isOnline: true,
+            lastActive: new Date(),
+          });
+
+          console.log(`✅ Google user logged in: ${user.email}`);
+        }
+
+        return done(null, user);
+      } catch (error) {
+        console.error("❌ Google OAuth Error:", error);
+        return done(error as Error, undefined);
+      }
+    }
+  )
+);
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
+  // Passport initialize
+  app.use(passport.initialize());
+
   // WebSocket bağlantıları için güvenli bir Map
   const wsClients = new Map<string, WebSocket>();
 
@@ -40,6 +101,36 @@ export async function registerRoutes(
   app.get("/api/status", (req, res) => {
     res.json({ status: "ok", env: process.env.NODE_ENV || "development" });
   });
+
+  // 🔥 GOOGLE OAUTH ROUTES
+  app.get(
+    "/api/auth/google",
+    passport.authenticate("google", { 
+      scope: ["profile", "email"],
+      session: false 
+    })
+  );
+
+  app.get(
+    "/api/auth/google/callback",
+    passport.authenticate("google", { 
+      session: false, 
+      failureRedirect: "/login" 
+    }),
+    (req, res) => {
+      const user = req.user as any;
+      
+      if (!user) {
+        return res.redirect("/login?error=auth_failed");
+      }
+
+      // Token olarak user.id'yi kullan
+      const token = user.id;
+      
+      // Frontend'e redirect (token ile)
+      res.redirect(`/?token=${token}&newUser=${!user.username}`);
+    }
+  );
 
   // --- KULLANICI KAYIT ---
   app.post("/api/auth/register", async (req, res) => {
@@ -247,10 +338,8 @@ app.get("/api/messages", async (req, res) => {
       res.status(500).json({ error: error.message || "Mesaj gönderilemedi" });
     }
   });
-  
-  // routes.ts içine EKLE (diğer route'ların yanına)
 
-// --- PROFİL GÜNCELLEME ---
+  // --- PROFİL GÜNCELLEME ---
 app.put("/api/users/profile", async (req, res) => {
   try {
     const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
@@ -313,7 +402,6 @@ app.post("/api/users/upload-photo", async (req, res) => {
 });
 
   // --- WEBSOCKET KURULUMU ---
-  // Railway production ortamında WebSocket desteği
   const wss = new WebSocketServer({ 
     server: httpServer,
     path: '/ws'
