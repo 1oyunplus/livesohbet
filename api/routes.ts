@@ -55,9 +55,12 @@ export async function registerRoutes(
       let isNewUser = false;
 
       if (!user) {
+        // 🔥 Random username oluştur
+        const randomUsername = `Kullanıcı${Math.floor(Math.random() * 10000)}`;
+        
         // Yeni kullanıcı oluştur
         user = await storage.createUser({
-          username: null, // ❗ Profilde doldurulacak
+          username: randomUsername, // 🔥 Random username
           email: email.toLowerCase(),
           password: null, // Firebase kullanıcıları şifresiz
           googleId: uid,

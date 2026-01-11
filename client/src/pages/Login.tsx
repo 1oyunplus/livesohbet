@@ -34,6 +34,8 @@ export default function Login() {
       }
 
       const data = await res.json();
+      
+      // 🔥 Token'ı kaydet
       localStorage.setItem('auth_token', data.token);
       
       toast({
@@ -41,7 +43,7 @@ export default function Login() {
         description: data.isNewUser ? "Profilinizi tamamlayın" : "Başarıyla giriş yaptınız",
       });
 
-      // Redirect
+      // Redirect - token localStorage'da olduğu için otomatik giriş yapacak
       window.location.href = "/";
     } catch (error: any) {
       console.error("Google login error:", error);

@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Camera, Settings, Edit2, LogOut } from "lucide-react";
+import { Camera, LogOut } from "lucide-react";
 import { useLocation, Link } from "wouter";
 
 export default function Profile() {
@@ -45,7 +45,7 @@ export default function Profile() {
             <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-[#121214] shadow-2xl">
               <img 
                 src={user.photoUrl || ""} 
-                alt={user.username} 
+                alt={user.username || "Kullanıcı"} 
                 className="w-full h-full object-cover"
               />
             </div>
@@ -56,7 +56,7 @@ export default function Profile() {
 
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-3xl font-bold text-white font-display flex items-center justify-center md:justify-start gap-2">
-              {user.username}
+              {user.username || "Kullanıcı Adı Yok"}
               {age && (
                 <span className="text-sm font-normal px-2 py-0.5 rounded-full bg-white/10 text-white/60 border border-white/5">
                   {age}
@@ -68,10 +68,8 @@ export default function Profile() {
             )}
           </div>
 
+          {/* ❌ Ayarlar butonu kaldırıldı */}
           <div className="flex gap-3">
-            <button className="p-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors">
-              <Settings className="w-5 h-5" />
-            </button>
             <Link href="/profile/edit">
               <button className="px-5 py-3 rounded-xl bg-primary text-white font-semibold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors">
                 Profili Düzenle

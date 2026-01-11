@@ -9,28 +9,13 @@ export function useAuth() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // 🔥 Google OAuth callback'ten gelen token'ı kontrol et
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromUrl = urlParams.get('token');
-    const isNewUser = urlParams.get('newUser') === 'true';
-
-    if (tokenFromUrl) {
-      // Token'ı kaydet
-      localStorage.setItem('auth_token', tokenFromUrl);
-      
-      // URL'den parametreleri temizle
-      window.history.replaceState({}, document.title, '/');
-      
-      // Kullanıcı bilgilerini çek
-      fetchUser(tokenFromUrl, isNewUser);
+    // Check for existing token first
+    const existingToken = localStorage.getItem('auth_token');
+    
+    if (existingToken) {
+      fetchUser(existingToken);
     } else {
-      // Check for existing token
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        fetchUser(token);
-      } else {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   }, []);
 
@@ -215,6 +200,7 @@ export function useAuth() {
     }
   };
 
+  // 🔥 ÇIKIŞ YAP - Login sayfasına yönlendir
   const logout = () => {
     if (ws) {
       ws.close();
@@ -222,10 +208,14 @@ export function useAuth() {
     }
     setUser(null);
     localStorage.removeItem('auth_token');
+    
     toast({
       title: "Çıkış yapıldı",
       description: "Tekrar görüşmek üzere!",
     });
+
+    // Login sayfasına yönlendir
+    window.location.href = "/login";
   };
 
   const updateDiamonds = (amount: number) => {
