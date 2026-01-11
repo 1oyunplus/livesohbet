@@ -62,7 +62,7 @@ export default function Login() {
       <div className="glass-panel p-8 md:p-12 rounded-3xl max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-display font-bold text-white mb-2">
-            Tekrar Hoş Geldiniz
+            Hoş Geldiniz
           </h1>
           <p className="text-white/60">
             Yakınınızdaki yeni insanlarla tanışmaya başlamak için giriş yapın
