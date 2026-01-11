@@ -3,72 +3,11 @@ import { type Server } from "http";
 import { storage } from "./storage.js";
 import { WebSocketServer } from "ws";
 import type { WebSocket } from "ws";
-import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-
-// 🔥 GOOGLE OAUTH YAPILANDIRMASI
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback",
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails?.[0]?.value;
-        const googleId = profile.id;
-        const photoUrl = profile.photos?.[0]?.value;
-        const displayName = profile.displayName;
-
-        if (!email || !googleId) {
-          return done(new Error("Google profil bilgileri eksik"), undefined);
-        }
-
-        // Kullanıcıyı Google ID ile bul
-        let user = await storage.getUserByGoogleId(googleId);
-
-        if (!user) {
-          // Yeni kullanıcı oluştur
-          user = await storage.createUser({
-            username: null, // ❗ Profilde doldurulacak
-            email: email.toLowerCase(),
-            password: null, // Google kullanıcıları şifresiz
-            googleId: googleId,
-            photoUrl: photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`,
-            diamonds: 10,
-            vipStatus: "none",
-            isOnline: true,
-            location: { lat: 40.7128, lng: -74.006 },
-          });
-
-          console.log(`✅ New Google user created: ${email}`);
-        } else {
-          // Mevcut kullanıcıyı online yap
-          user = await storage.updateUser(user.id, {
-            isOnline: true,
-            lastActive: new Date(),
-          });
-
-          console.log(`✅ Google user logged in: ${user.email}`);
-        }
-
-        return done(null, user);
-      } catch (error) {
-        console.error("❌ Google OAuth Error:", error);
-        return done(error as Error, undefined);
-      }
-    }
-  )
-);
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  
-  // Passport initialize
-  app.use(passport.initialize());
 
   // WebSocket bağlantıları için güvenli bir Map
   const wsClients = new Map<string, WebSocket>();
@@ -102,112 +41,53 @@ export async function registerRoutes(
     res.json({ status: "ok", env: process.env.NODE_ENV || "development" });
   });
 
-  // 🔥 GOOGLE OAUTH ROUTES
-  app.get(
-    "/api/auth/google",
-    passport.authenticate("google", { 
-      scope: ["profile", "email"],
-      session: false 
-    })
-  );
-
-  app.get(
-    "/api/auth/google/callback",
-    passport.authenticate("google", { 
-      session: false, 
-      failureRedirect: "/login" 
-    }),
-    (req, res) => {
-      const user = req.user as any;
-      
-      if (!user) {
-        return res.redirect("/login?error=auth_failed");
-      }
-
-      // Token olarak user.id'yi kullan
-      const token = user.id;
-      
-      // Frontend'e redirect (token ile)
-      res.redirect(`/?token=${token}&newUser=${!user.username}`);
-    }
-  );
-
-  // --- KULLANICI KAYIT ---
-  app.post("/api/auth/register", async (req, res) => {
+  // 🔥 FIREBASE LOGIN ENDPOINT
+  app.post("/api/auth/firebase-login", async (req, res) => {
     try {
-      const { username, email, password, photoUrl } = req.body;
+      const { uid, email, displayName, photoURL } = req.body;
       
-      if (!username || !email || !password) {
-        return res.status(400).json({ error: "Kullanıcı adı, e-posta ve şifre gereklidir" });
+      if (!uid || !email) {
+        return res.status(400).json({ error: "UID ve email gerekli" });
       }
 
-      // Email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: "Geçersiz e-posta formatı" });
-      }
+      // Kullanıcıyı Firebase UID ile bul
+      let user = await storage.getUserByGoogleId(uid);
+      let isNewUser = false;
 
-      const existingUser = await storage.getUserByEmail(email.toLowerCase());
-      if (existingUser) {
-        return res.status(400).json({ error: "Bu e-posta adresi zaten kayıtlı" });
-      }
-
-      const user = await storage.createUser({
-        username: username.trim(),
-        email: email.toLowerCase().trim(),
-        password: password,
-        photoUrl: photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`,
-        diamonds: 10,
-        vipStatus: "none",
-        isOnline: true,
-        location: { lat: 40.7128, lng: -74.0060 }
-      });
-
-      console.log(`✅ User registered: ${user.username} (${user.email})`);
-      
-      res.status(201).json({ user, token: user.id });
-    } catch (error: any) {
-      console.error("❌ Register Error:", error);
-      res.status(500).json({ error: error.message || "Kayıt sırasında hata oluştu" });
-    }
-  });
-
-  // --- KULLANICI GİRİŞ ---
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ error: "E-posta ve şifre gereklidir" });
-      }
-
-      // Email'i normalize et (küçük harf + trim)
-      const normalizedEmail = email.toLowerCase().trim();
-      
-      const user = await storage.getUserByEmail(normalizedEmail);
-      
       if (!user) {
-        console.log(`❌ Login failed: User not found for ${normalizedEmail}`);
-        return res.status(401).json({ error: "E-posta veya şifre hatalı" });
+        // Yeni kullanıcı oluştur
+        user = await storage.createUser({
+          username: null, // ❗ Profilde doldurulacak
+          email: email.toLowerCase(),
+          password: null, // Firebase kullanıcıları şifresiz
+          googleId: uid,
+          photoUrl: photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || 'User')}&background=random`,
+          diamonds: 10,
+          vipStatus: "none",
+          isOnline: true,
+          location: { lat: 40.7128, lng: -74.006 },
+        });
+
+        isNewUser = true;
+        console.log(`✅ New Firebase user created: ${email}`);
+      } else {
+        // Mevcut kullanıcıyı online yap
+        user = await storage.updateUser(user.id, {
+          isOnline: true,
+          lastActive: new Date(),
+        });
+
+        console.log(`✅ Firebase user logged in: ${user.email}`);
       }
 
-      // Şifre kontrolü
-      if (!user.password || user.password !== password) {
-        console.log(`❌ Login failed: Invalid password for ${user.username}`);
-        return res.status(401).json({ error: "E-posta veya şifre hatalı" });
-      }
-
-      // Kullanıcıyı online yap
-      const updatedUser = await storage.updateUser(user.id, { 
-        isOnline: true, 
-        lastActive: new Date() 
+      res.json({ 
+        user, 
+        token: user.id,
+        isNewUser 
       });
-
-      console.log(`✅ Login successful: ${updatedUser.username}`);
-      res.json({ user: updatedUser, token: user.id });
     } catch (error: any) {
-      console.error("❌ Login Error:", error);
-      res.status(500).json({ error: error.message || "Giriş sırasında hata oluştu" });
+      console.error("❌ Firebase Login Error:", error);
+      res.status(500).json({ error: error.message || "Giriş başarısız" });
     }
   });
 
@@ -264,33 +144,33 @@ export async function registerRoutes(
   });
 
   // --- MESAJLARI GETİR ---
-app.get("/api/messages", async (req, res) => {
-  try {
-    const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
-    const receiverId = req.query.receiverId as string;
-    
-    if (!token) {
-      return res.status(400).json({ error: "Token gerekli" });
-    }
+  app.get("/api/messages", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
+      const receiverId = req.query.receiverId as string;
+      
+      if (!token) {
+        return res.status(400).json({ error: "Token gerekli" });
+      }
 
-    // 🔥 YENİ: Eğer receiverId "ALL" ise, tüm mesajları getir
-    if (receiverId === "ALL") {
-      const allMessages = await storage.getAllMessages(token);
-      return res.json(allMessages);
-    }
+      // 🔥 YENİ: Eğer receiverId "ALL" ise, tüm mesajları getir
+      if (receiverId === "ALL") {
+        const allMessages = await storage.getAllMessages(token);
+        return res.json(allMessages);
+      }
 
-    // Belirli bir kullanıcı için mesajları getir
-    if (!receiverId) {
-      return res.status(400).json({ error: "receiverId gerekli" });
-    }
+      // Belirli bir kullanıcı için mesajları getir
+      if (!receiverId) {
+        return res.status(400).json({ error: "receiverId gerekli" });
+      }
 
-    const messages = await storage.getMessages(token, receiverId);
-    res.json(messages);
-  } catch (error: any) {
-    console.error("❌ Get Messages Error:", error);
-    res.status(500).json({ error: error.message || "Mesajlar getirilemedi" });
-  }
-});
+      const messages = await storage.getMessages(token, receiverId);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("❌ Get Messages Error:", error);
+      res.status(500).json({ error: error.message || "Mesajlar getirilemedi" });
+    }
+  });
 
   // --- MESAJ GÖNDER ---
   app.post("/api/messages", async (req, res) => {
@@ -340,66 +220,66 @@ app.get("/api/messages", async (req, res) => {
   });
 
   // --- PROFİL GÜNCELLEME ---
-app.put("/api/users/profile", async (req, res) => {
-  try {
-    const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
-    
-    if (!token) {
-      return res.status(401).json({ error: "Token gerekli" });
+  app.put("/api/users/profile", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Token gerekli" });
+      }
+
+      const user = await storage.getUser(token);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+      }
+
+      const { username, photoUrl, age, gender, birthDate, bio, hobbies, location } = req.body;
+
+      const updates: any = {};
+      if (username !== undefined) updates.username = username;
+      if (photoUrl !== undefined) updates.photoUrl = photoUrl;
+      if (age !== undefined) updates.age = age;
+      if (gender !== undefined) updates.gender = gender;
+      if (birthDate !== undefined) updates.birthDate = birthDate ? new Date(birthDate) : null;
+      if (bio !== undefined) updates.bio = bio;
+      if (hobbies !== undefined) updates.hobbies = hobbies;
+      if (location !== undefined) updates.location = location;
+
+      const updatedUser = await storage.updateUser(token, updates);
+
+      console.log(`✅ Profile updated: ${updatedUser.username}`);
+      res.json({ user: updatedUser });
+    } catch (error: any) {
+      console.error("❌ Profile Update Error:", error);
+      res.status(500).json({ error: error.message || "Profil güncellenemedi" });
     }
+  });
 
-    const user = await storage.getUser(token);
-    
-    if (!user) {
-      return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+  // --- FOTOĞRAF YÜKLEME (Opsiyonel, base64 için) ---
+  app.post("/api/users/upload-photo", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Token gerekli" });
+      }
+
+      const { photoBase64 } = req.body;
+
+      if (!photoBase64) {
+        return res.status(400).json({ error: "Fotoğraf verisi eksik" });
+      }
+
+      // Base64'ü olduğu gibi kaydet (veya cloud storage'a yükle)
+      const photoUrl = photoBase64;
+
+      res.json({ photoUrl });
+    } catch (error: any) {
+      console.error("❌ Photo Upload Error:", error);
+      res.status(500).json({ error: error.message || "Fotoğraf yüklenemedi" });
     }
-
-    const { username, photoUrl, age, gender, birthDate, bio, hobbies, location } = req.body;
-
-    const updates: any = {};
-    if (username !== undefined) updates.username = username;
-    if (photoUrl !== undefined) updates.photoUrl = photoUrl;
-    if (age !== undefined) updates.age = age;
-    if (gender !== undefined) updates.gender = gender;
-    if (birthDate !== undefined) updates.birthDate = birthDate ? new Date(birthDate) : null;
-    if (bio !== undefined) updates.bio = bio;
-    if (hobbies !== undefined) updates.hobbies = hobbies;
-    if (location !== undefined) updates.location = location;
-
-    const updatedUser = await storage.updateUser(token, updates);
-
-    console.log(`✅ Profile updated: ${updatedUser.username}`);
-    res.json({ user: updatedUser });
-  } catch (error: any) {
-    console.error("❌ Profile Update Error:", error);
-    res.status(500).json({ error: error.message || "Profil güncellenemedi" });
-  }
-});
-
-// --- FOTOĞRAF YÜKLEME (Opsiyonel, base64 için) ---
-app.post("/api/users/upload-photo", async (req, res) => {
-  try {
-    const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
-    
-    if (!token) {
-      return res.status(401).json({ error: "Token gerekli" });
-    }
-
-    const { photoBase64 } = req.body;
-
-    if (!photoBase64) {
-      return res.status(400).json({ error: "Fotoğraf verisi eksik" });
-    }
-
-    // Base64'ü olduğu gibi kaydet (veya cloud storage'a yükle)
-    const photoUrl = photoBase64;
-
-    res.json({ photoUrl });
-  } catch (error: any) {
-    console.error("❌ Photo Upload Error:", error);
-    res.status(500).json({ error: error.message || "Fotoğraf yüklenemedi" });
-  }
-});
+  });
 
   // --- WEBSOCKET KURULUMU ---
   const wss = new WebSocketServer({ 
