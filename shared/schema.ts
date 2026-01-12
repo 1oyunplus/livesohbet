@@ -22,6 +22,8 @@ export const users = pgTable("users", {
   bio: text("bio"),
   blockedUsers: jsonb("blocked_users"), // string array of blocked user IDs
   vipExpiry: timestamp("vip_expiry"),
+  likes: integer("likes").default(0), // 🔥 YENİ: Beğeni sayısı
+  likedBy: jsonb("liked_by"), // 🔥 YENİ: Beğenen kullanıcı ID'leri (string array)
 });
 
 export const messages = pgTable("messages", {

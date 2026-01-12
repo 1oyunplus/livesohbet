@@ -13,6 +13,7 @@ import Store from "@/pages/Store";
 import Profile from "@/pages/Profile";
 import EditProfile from "@/pages/EditProfile";
 import Login from "@/pages/Login";
+import UserDetail from "@/pages/UserDetail"; // 🔥 YENİ
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -50,6 +51,18 @@ function Router() {
           ) : (
             <>
               <Profile />
+              <Navigation />
+            </>
+          )}
+        </Route>
+
+        {/* 🔥 YENİ: Kullanıcı Detay Sayfası */}
+        <Route path="/user/:userId">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <UserDetail />
               <Navigation />
             </>
           )}

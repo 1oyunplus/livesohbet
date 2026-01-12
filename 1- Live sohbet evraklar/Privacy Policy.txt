@@ -1,0 +1,114 @@
+Gizlilik Politikası
+
+Bu gizlilik politikası, Live Sohbet uygulaması için geçerlidir.
+Live Sohbet, kullanıcılarına ücretsiz olarak sunulan bir web ve mobil (Android) uygulamasıdır. Uygulama “olduğu gibi” kullanılmak üzere tasarlanmıştır.
+
+Bilgi Toplama ve Kullanımı
+
+Uygulama, indirildiğinde ve kullanıldığında bazı bilgileri toplar. Bu bilgiler şunları içerebilir:
+
+Cihazınızın İnternet Protokol (IP) adresi
+
+Uygulama içinde ziyaret edilen sayfalar, ziyaret tarihi ve saati, bu sayfalarda geçirilen süre
+
+Uygulama üzerinde geçirilen toplam süre
+
+Kullanılan işletim sistemi ve cihaz bilgileri
+
+Uygulama, mobil cihazınızın kesin konum bilgilerini toplamaz.
+
+Google ile Giriş
+
+Live Sohbet uygulamasında kullanıcı girişi Google ile giriş (Google Sign-In) yöntemiyle sağlanır.
+Bu giriş sırasında aşağıdaki bilgiler alınabilir:
+
+Ad
+
+E-posta adresi
+
+Uygulama, Google hesabınızdan profil fotoğrafı almaz.
+Profil fotoğrafı kullanıcı tarafından uygulama içerisinde isteğe bağlı olarak belirlenebilir.
+
+Bilgilerin Kullanım Amacı
+
+Toplanan bilgiler aşağıdaki amaçlarla kullanılır:
+
+Kullanıcı hesabı oluşturmak ve yönetmek
+
+Sohbet hizmetini sağlamak
+
+Kullanıcı profillerini göstermek
+
+Uygulamanın güvenliğini ve düzgün çalışmasını sağlamak
+
+Toplanan bilgiler bu amaçlar dışında kullanılmaz.
+
+Üçüncü Taraf Hizmetleri
+
+Uygulama, veri işleme konusunda kendi gizlilik politikalarına sahip üçüncü taraf hizmetleri kullanmaktadır. Bunlar:
+
+Google Play Hizmetleri
+
+Google AdMob
+
+Google Sign-In
+
+Bu hizmetler, kendi gizlilik politikalarına uygun olarak bazı verileri işleyebilir.
+
+Reklamlar
+
+Live Sohbet uygulamasında Google AdMob aracılığıyla reklamlar gösterilmektedir.
+AdMob, reklam deneyimini iyileştirmek için cihaz bilgileri ve reklam kimliği gibi bazı verileri toplayabilir. Bu veriler Live Sohbet tarafından değil, Google tarafından işlenir.
+
+Bilgi Paylaşımı
+
+Kullanıcı verileri üçüncü taraflarla paylaşılmaz.
+
+Ancak Hizmet Sağlayıcı, aşağıdaki durumlarda bilgileri açıklayabilir:
+
+Yasal zorunluluklar (mahkeme kararı, yasal süreçler vb.)
+
+Hakların korunması, güvenliğin sağlanması veya dolandırıcılığın önlenmesi
+
+Bu gizlilik politikasına uymayı kabul eden güvenilir hizmet sağlayıcılarla teknik iş birliği yapılması
+
+Vazgeçme Hakları
+
+Uygulamayı mobil cihazınızdan kaldırarak bilgi toplanmasını durdurabilirsiniz.
+Bu işlem, mobil cihazınızda veya uygulama mağazasında bulunan standart kaldırma yöntemleriyle yapılabilir.
+
+Veri Saklama Politikası
+
+Hizmet Sağlayıcı, kullanıcı verilerini uygulama kullanıldığı süre boyunca ve sonrasında makul bir süre saklar.
+Kişisel verilerinizin silinmesini talep etmek için aşağıdaki e-posta adresinden bizimle iletişime geçebilirsiniz:
+
+📧 Uygulamix@gmail.com
+
+Yaş Sınırı
+
+Live Sohbet uygulaması 18 yaş ve üzeri kullanıcılar için tasarlanmıştır.
+18 yaşın altındaki kişilerin uygulamayı kullanması yasaktır.
+
+Güvenlik
+
+Hizmet Sağlayıcı, kullanıcı bilgilerinin gizliliğini korumaya önem verir.
+Bilgileri korumak için fiziksel, elektronik ve idari güvenlik önlemleri uygulanmaktadır.
+
+Değişiklikler
+
+Bu Gizlilik Politikası zaman zaman güncellenebilir.
+Güncellemeler bu sayfa üzerinden yayınlanır. Uygulamayı kullanmaya devam etmeniz, yapılan değişiklikleri kabul ettiğiniz anlamına gelir.
+
+Yürürlük Tarihi
+
+Bu gizlilik politikası [tarihi buraya yaz] tarihinden itibaren geçerlidir.
+
+Onayınız
+
+Uygulamayı kullanarak, bu Gizlilik Politikası’nda belirtilen şartları kabul etmiş olursunuz.
+
+Bize Ulaşın
+
+Gizlilikle ilgili sorularınız için bizimle iletişime geçebilirsiniz:
+
+📧 E-posta: Uygulamix@gmail.com

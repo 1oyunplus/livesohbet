@@ -284,6 +284,77 @@ export async function registerRoutes(
     }
   });
 
+  // 🔥 KULLANICI DETAYINI GETİR
+  app.get("/api/users/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const token = req.headers.authorization?.replace("Bearer ", "") || req.query.token as string;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Token gerekli" });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      }
+
+      res.json({ user });
+    } catch (error: any) {
+      console.error("❌ Get User Error:", error);
+      res.status(500).json({ error: error.message || "Kullanıcı bilgisi alınamadı" });
+    }
+  });
+
+  // 🔥 KULLANICIYI BEĞEN/BEĞENMEDEN KALDIR
+  app.post("/api/users/:userId/like", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Token gerekli" });
+      }
+
+      const currentUser = await storage.getUser(token);
+      const targetUser = await storage.getUser(userId);
+      
+      if (!currentUser || !targetUser) {
+        return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      }
+
+      const likedBy = (targetUser.likedBy as string[]) || [];
+      const hasLiked = likedBy.includes(currentUser.id);
+
+      let updatedLikedBy: string[];
+      let updatedLikes: number;
+
+      if (hasLiked) {
+        // Beğeniyi kaldır
+        updatedLikedBy = likedBy.filter(id => id !== currentUser.id);
+        updatedLikes = Math.max(0, (targetUser.likes || 0) - 1);
+      } else {
+        // Beğen
+        updatedLikedBy = [...likedBy, currentUser.id];
+        updatedLikes = (targetUser.likes || 0) + 1;
+      }
+
+      const updatedUser = await storage.updateUser(userId, {
+        likes: updatedLikes,
+        likedBy: updatedLikedBy
+      });
+
+      res.json({ 
+        user: updatedUser,
+        liked: !hasLiked 
+      });
+    } catch (error: any) {
+      console.error("❌ Like User Error:", error);
+      res.status(500).json({ error: error.message || "Beğeni işlemi başarısız" });
+    }
+  });
+
   // --- WEBSOCKET KURULUMU ---
   const wss = new WebSocketServer({ 
     server: httpServer,

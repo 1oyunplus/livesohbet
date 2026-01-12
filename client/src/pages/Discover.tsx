@@ -116,7 +116,13 @@ export default function Discover() {
       {onlineUsers && onlineUsers.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {onlineUsers.map((user, idx) => (
-            <UserCard key={user.id} user={user} index={idx} />
+            <div 
+              key={user.id} 
+              onClick={() => setLocation(`/user/${user.id}`)} 
+              className="cursor-pointer hover:scale-105 transition-transform"
+            >
+              <UserCard user={user} index={idx} />
+            </div>
           ))}
         </div>
       ) : (
