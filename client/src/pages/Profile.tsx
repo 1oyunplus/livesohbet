@@ -70,11 +70,10 @@ export default function Profile() {
 
           {/* 🔥 Ayarlar butonu geri geldi */}
           <div className="flex gap-3">
-            <Link href="/settings">
-              <button className="p-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors">
-                <Settings className="w-5 h-5" />
-              </button>
-            </Link>
+            <button  onClick={() => setLocation("/settings")}
+				className="p-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors">
+				<Settings className="w-5 h-5" />
+			</button>
             <Link href="/profile/edit">
               <button className="px-5 py-3 rounded-xl bg-primary text-white font-semibold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors">
                 Profili Düzenle
