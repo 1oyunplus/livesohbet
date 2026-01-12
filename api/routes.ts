@@ -355,6 +355,71 @@ export async function registerRoutes(
     }
   });
 
+  // 🔥 KULLANICIYI ENGELLE
+  app.post("/api/users/:userId/block", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Token gerekli" });
+      }
+
+      const currentUser = await storage.getUser(token);
+      
+      if (!currentUser) {
+        return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      }
+
+      const blockedUsers = (currentUser.blockedUsers as string[]) || [];
+      
+      if (blockedUsers.includes(userId)) {
+        return res.status(400).json({ error: "Kullanıcı zaten engellenmiş" });
+      }
+
+      const updatedBlockedUsers = [...blockedUsers, userId];
+
+      const updatedUser = await storage.updateUser(token, {
+        blockedUsers: updatedBlockedUsers
+      });
+
+      res.json({ user: updatedUser });
+    } catch (error: any) {
+      console.error("❌ Block User Error:", error);
+      res.status(500).json({ error: error.message || "Engelleme işlemi başarısız" });
+    }
+  });
+
+  // 🔥 KULLANICI ENGELİNİ KALDIR
+  app.post("/api/users/:userId/unblock", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const token = req.headers.authorization?.replace("Bearer ", "") || req.body.token;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Token gerekli" });
+      }
+
+      const currentUser = await storage.getUser(token);
+      
+      if (!currentUser) {
+        return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      }
+
+      const blockedUsers = (currentUser.blockedUsers as string[]) || [];
+      const updatedBlockedUsers = blockedUsers.filter(id => id !== userId);
+
+      const updatedUser = await storage.updateUser(token, {
+        blockedUsers: updatedBlockedUsers
+      });
+
+      res.json({ user: updatedUser });
+    } catch (error: any) {
+      console.error("❌ Unblock User Error:", error);
+      res.status(500).json({ error: error.message || "Engel kaldırma başarısız" });
+    }
+  });
+
   // --- WEBSOCKET KURULUMU ---
   const wss = new WebSocketServer({ 
     server: httpServer,

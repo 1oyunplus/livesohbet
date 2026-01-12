@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Heart, ArrowLeft, Calendar, MapPin, Sparkles } from "lucide-react";
+import { Heart, ArrowLeft, Calendar, Sparkles, Shield, Flag } from "lucide-react";
 import { User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,6 +14,7 @@ export default function UserDetail() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLiking, setIsLiking] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -67,6 +68,48 @@ export default function UserDetail() {
     } finally {
       setIsLiking(false);
     }
+  };
+
+  const handleBlock = async () => {
+    if (!currentUser || !user) return;
+    
+    const confirmBlock = window.confirm(`${user.username} kullanıcısını engellemek istediğinize emin misiniz?`);
+    if (!confirmBlock) return;
+
+    setIsBlocking(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/users/${userId}/block`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Engellendi",
+          description: "Kullanıcı başarıyla engellendi",
+        });
+        setLocation("/discover");
+      }
+    } catch (error) {
+      console.error("Block error:", error);
+      toast({
+        title: "Hata",
+        description: "Engelleme işlemi başarısız",
+        variant: "destructive"
+      });
+    } finally {
+      setIsBlocking(false);
+    }
+  };
+
+  const handleReport = () => {
+    // TODO: Şikayet et fonksiyonu - sonra doldurulacak
+    toast({
+      title: "Bildirim",
+      description: "Şikayet sistemi yakında eklenecek",
+    });
   };
 
   if (isLoading) {
@@ -134,6 +177,18 @@ export default function UserDetail() {
                 {age}
               </span>
             )}
+            {/* 🔥 Beğeni sayacı yanında kalp ikonu */}
+            <button
+              onClick={handleLike}
+              disabled={isLiking}
+              className={`ml-2 p-2 rounded-full transition-all ${
+                hasLiked
+                  ? "bg-red-500 text-white"
+                  : "bg-white/5 text-white/60 hover:bg-white/10"
+              } disabled:opacity-50`}
+            >
+              <Heart className={`w-5 h-5 ${hasLiked ? "fill-white" : ""}`} />
+            </button>
           </h1>
 
           {gender && (
@@ -141,41 +196,30 @@ export default function UserDetail() {
           )}
 
           {/* Beğeni Sayacı */}
-          <div className="mt-4 flex items-center gap-2 text-white/60">
-            <Heart className="w-5 h-5 fill-red-500 text-red-500" />
-            <span className="font-semibold">{user.likes || 0} beğeni</span>
+          <div className="mt-2 flex items-center gap-2 text-white/60">
+            <span className="text-sm">{user.likes || 0} kişi beğendi</span>
           </div>
         </div>
 
-        {/* Beğen Butonu */}
-        <button
-          onClick={handleLike}
-          disabled={isLiking}
-          className={`w-full py-4 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 mb-6 ${
-            hasLiked
-              ? "bg-red-500 text-white hover:bg-red-600"
-              : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-          } disabled:opacity-50`}
-        >
-          <Heart className={`w-5 h-5 ${hasLiked ? "fill-white" : ""}`} />
-          {hasLiked ? "Beğenildi" : "Beğen"}
-        </button>
+        {/* Hobiler */}
+        {hobbies.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-white mb-3">Hobiler</h3>
+            <div className="flex flex-wrap gap-2">
+              {hobbies.map((hobby) => (
+                <span 
+                  key={hobby} 
+                  className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/80 text-sm"
+                >
+                  {hobby}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Bilgiler */}
         <div className="space-y-6">
-          {/* Doğum Tarihi */}
-          {user.birthDate && (
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-              <div className="flex items-center gap-3 text-white/80">
-                <Calendar className="w-5 h-5 text-primary" />
-                <div>
-                  <div className="text-xs text-white/40 uppercase tracking-wider font-semibold">Doğum Tarihi</div>
-                  <div className="text-sm">{new Date(user.birthDate).toLocaleDateString('tr-TR')}</div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Hakkında */}
           {user.bio && (
             <div>
@@ -189,19 +233,15 @@ export default function UserDetail() {
             </div>
           )}
 
-          {/* Hobiler */}
-          {hobbies.length > 0 && (
-            <div>
-              <h3 className="text-lg font-bold text-white mb-3">Hobiler</h3>
-              <div className="flex flex-wrap gap-2">
-                {hobbies.map((hobby) => (
-                  <span 
-                    key={hobby} 
-                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/80 text-sm"
-                  >
-                    {hobby}
-                  </span>
-                ))}
+          {/* Doğum Tarihi */}
+          {user.birthDate && (
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+              <div className="flex items-center gap-3 text-white/80">
+                <Calendar className="w-5 h-5 text-primary" />
+                <div>
+                  <div className="text-xs text-white/40 uppercase tracking-wider font-semibold">Doğum Tarihi</div>
+                  <div className="text-sm">{new Date(user.birthDate).toLocaleDateString('tr-TR')}</div>
+                </div>
               </div>
             </div>
           )}
@@ -215,6 +255,25 @@ export default function UserDetail() {
               </div>
             </div>
           )}
+
+          {/* Engelle ve Şikayet Et Butonları */}
+          <div className="grid grid-cols-2 gap-3 pt-4">
+            <button
+              onClick={handleBlock}
+              disabled={isBlocking}
+              className="py-3 rounded-xl border border-orange-500/20 text-orange-400 hover:bg-orange-500/10 transition-colors flex items-center justify-center gap-2 font-medium disabled:opacity-50"
+            >
+              <Shield className="w-5 h-5" />
+              Engelle
+            </button>
+            <button
+              onClick={handleReport}
+              className="py-3 rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2 font-medium"
+            >
+              <Flag className="w-5 h-5" />
+              Şikayet Et
+            </button>
+          </div>
         </div>
       </div>
     </div>

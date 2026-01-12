@@ -5,7 +5,7 @@ import { eq, and, or } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  getUserByGoogleId(googleId: string): Promise<User | undefined>; // 🔥 YENİ
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getAllUsers(excludeId?: string, sortByLocation?: { lat: number; lng: number }): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
@@ -56,8 +56,24 @@ export class DatabaseStorage implements IStorage {
     try {
       let allUsers = await db.select().from(users);
       
+      // 🔥 Engellenen kullanıcıları filtrele
       if (excludeId) {
-        allUsers = allUsers.filter(u => u.id !== excludeId);
+        const currentUser = await this.getUser(excludeId);
+        const blockedUsers = (currentUser?.blockedUsers as string[]) || [];
+        
+        allUsers = allUsers.filter(u => {
+          // Kendini çıkar
+          if (u.id === excludeId) return false;
+          
+          // Engellediği kullanıcıları çıkar
+          if (blockedUsers.includes(u.id)) return false;
+          
+          // Kendisini engelleyen kullanıcıları çıkar
+          const userBlockedList = (u.blockedUsers as string[]) || [];
+          if (userBlockedList.includes(excludeId)) return false;
+          
+          return true;
+        });
       }
       
       if (sortByLocation) {
@@ -98,10 +114,10 @@ export class DatabaseStorage implements IStorage {
       
       const [user] = await db.insert(users).values({
         id,
-        username: insertUser.username?.trim() || null, // 🔥 nullable
+        username: insertUser.username?.trim() || null,
         email: normalizedEmail,
-        password: insertUser.password || null, // 🔥 nullable
-        googleId: insertUser.googleId || null, // 🔥 YENİ
+        password: insertUser.password || null,
+        googleId: insertUser.googleId || null,
         photoUrl: insertUser.photoUrl,
         bio: insertUser.bio || null,
         hobbies: insertUser.hobbies || null,

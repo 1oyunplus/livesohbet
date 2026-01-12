@@ -14,6 +14,8 @@ import Profile from "@/pages/Profile";
 import EditProfile from "@/pages/EditProfile";
 import Login from "@/pages/Login";
 import UserDetail from "@/pages/UserDetail"; // 🔥 YENİ
+import Settings from "@/pages/Settings"; // 🔥 YENİ
+import BlockedUsers from "@/pages/BlockedUsers"; // 🔥 YENİ
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -63,6 +65,30 @@ function Router() {
           ) : (
             <>
               <UserDetail />
+              <Navigation />
+            </>
+          )}
+        </Route>
+
+        {/* 🔥 YENİ: Ayarlar Sayfası */}
+        <Route path="/settings">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <Settings />
+              <Navigation />
+            </>
+          )}
+        </Route>
+
+        {/* 🔥 YENİ: Engellenen Kullanıcılar */}
+        <Route path="/settings/blocked-users">
+          {!user ? (
+            <Redirect to="/login" />
+          ) : (
+            <>
+              <BlockedUsers />
               <Navigation />
             </>
           )}
